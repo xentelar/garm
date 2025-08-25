@@ -1,0 +1,29 @@
+[
+  {garm, [
+    {cfg_file, ${CFG_FILE}}
+  ]},
+
+  {kernel, [
+    {logger_level, ${LOGGER_LEVEL}},
+    {logger, 
+     [{
+        handler, default, logger_std_h,
+        #{
+          formatter => {
+            logger_formatter,
+            #{
+              template => [
+               " { \"time\":\"", time, "\", ",
+               " \"level\":\"", level, "\", ",
+               " \"pid\":\"", pid, "\", ","\"mfa\":\"", mfa,"\", \"line\":\"", line, "\", ",
+               " \"msg\":\"", msg, "\"}",
+               "\r\n"
+              ]
+            }
+          }
+        }
+      }]
+    }
+  ]}
+
+].
