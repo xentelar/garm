@@ -23,36 +23,22 @@
 %% @end
 %% -----------------------------------------------------------------------------
 
--module(garm_api).
+-module(garm_http_request).
 
 -include_lib("kernel/include/logger.hrl").
 
--define(DEFAULT, #{<<"headers">> => #{}, 
-                    <<"bindings">> => #{}, 
-                    <<"query-values">> => #{}}).
+-define(DEFAULT_VALUES, #{<<"headers">> => #{},
+                        <<"headers-ext">> => #{}, 
+                        <<"bindings">> => #{}, 
+                        <<"query-values">> => #{}}).
 
 %% =============================================================================
 %% public functions
 %% =============================================================================
 
--export([populate_from_req/3]).
+-export([get_body_from_req/3]).
 -export([get_header_value/2]).
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec populate_from_req(map(), cowboy_req:req(), atom()) -> map().
-populate_from_req(MethodCfg, Req, ValidBody) ->
-  Params = get_params_from_req(MethodCfg, Req),
-
-  case get_body_from_req(MethodCfg, Req) of
-    {error, Reason} ->
-      {error, Reason};
-
-    Body0 ->
-      {ok, maps:merge(Params, Body0)}
-  end.
+-export([get_params_values/2]).
 
 %% -----------------------------------------------------------------------------
 %% @doc
@@ -65,6 +51,47 @@ get_header_value(Name, Req) ->
   Name0 = garm_utils:to_header(Name),
   maps:get(Name0, Headers, undefined).
 
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec get_body_from_req(map(), map(), cowboy_req:req()) -> map().
+get_body_from_req(MethodCfg, ParamValues, Req) ->
+  case maps:get(<<"requestBody">>, MethodCfg, no_request_body) of
+    no_request_body ->
+      ParamValues#{<<"body">> => #{}};
+    
+    _RequestBody ->
+      get_body_content(ParamValues, Req)
+  end.
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec get_params_values(map(), cowboy_req:req()) -> map().
+get_params_values(MethodCfg, Req) ->
+  case maps:get(<<"parameters">>, MethodCfg, no_params) of
+    no_params ->
+      ?DEFAULT_VALUES;
+
+    ParamsCfg -> 
+      F = fun(ParamCfg, Values) ->
+            ParamName = maps:get(<<"name">>, ParamCfg),
+            case maps:get(<<"in">>, ParamCfg) of
+              <<"header">> ->
+                get_header_param(ParamName, Values, ParamCfg, Req);
+
+              <<"path">> ->
+                get_binding_param(ParamName, Values, ParamCfg, Req);
+
+              <<"query">> ->
+                get_query_param(ParamName, Values, ParamCfg, Req)
+            end
+      end,
+      lists:foldl(F, ?DEFAULT_VALUES, ParamsCfg)
+  end.
+
 %% =============================================================================
 %% private functions
 %% =============================================================================
@@ -73,86 +100,47 @@ get_header_value(Name, Req) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec get_params_from_req(map(), cowboy_req:req()) -> map().
-get_params_from_req(MethodCfg, Req) ->
-  %Headers = cowboy_req:headers(Req),
-  case maps:get(<<"parameters">>, MethodCfg, no_params) of
-    no_params ->
-      ?DEFAULT;
-
-    Params0 -> 
-      F = fun(Param, Acc) ->
-            ParamName = maps:get(<<"name">>, Param),
-            case maps:get(<<"in">>, Param) of
-              <<"header">> ->
-                get_heder_param(ParamName, Acc, Req);
-
-              <<"path">> ->
-                get_binding_param(ParamName, Acc, Req);
-
-              <<"query">> ->
-                get_query_param(ParamName, Acc, Req)
-            end
-      end,
-      lists:foldl(F, ?DEFAULT, Params0)
-  end.
+-spec get_header_param(binary(), map(), map(), term()) -> map().
+get_header_param(ParamName, Values, ParamCfg, Req) ->
+  Hs = maps:get(<<"headers">>, Values),
+  Value = get_header_value(ParamName, Req),
+  Headers = Hs#{ParamName => get_value(ParamCfg, Value)},
+  Values#{<<"headers">> => Headers}.
 
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec get_body_from_req(map(), cowboy_req:req()) -> map().
-get_body_from_req(MethodCfg, Req) ->
-  case maps:get(<<"requestBody">>, MethodCfg, no_request_body) of
-    no_request_body ->
-      #{<<"body">> => #{}};
-    
-    _RequestBody ->
-      get_body_content(Req)
-  end.
+-spec get_binding_param(binary(), map(), map(), term()) -> map().
+get_binding_param(ParamName, Values, ParamCfg, Req) ->
+  Bs = maps:get(<<"bindings">>, Values),
+  Value = get_binding_value(ParamName, Req),
+  Bindings = Bs#{ParamName => get_value(ParamCfg, Value)},
+  Values#{<<"bindings">> => Bindings}.
 
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec get_heder_param(binary(), map(), term()) -> map().
-get_heder_param(ParamName, Params, Req) ->
-  Hs = maps:get(<<"headers">>, Params),
-  Headers = Hs#{ParamName => get_header_value(ParamName, Req)},
-  Params#{<<"headers">> => Headers}.
+-spec get_query_param(binary(), map(), map(), term()) -> map().
+get_query_param(QueryName, Values, ParamCfg, Req) ->
+  QVs = maps:get(<<"query-values">>, Values),
+  Value = get_query_value(QueryName, Req),
+  QueryValues = QVs#{QueryName => get_value(ParamCfg, Value)},
+  Values#{<<"query-values">> => QueryValues}.
 
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec get_binding_param(binary(), map(), term()) -> map().
-get_binding_param(ParamName, Params, Req) ->
-  Bs = maps:get(<<"bindings">>, Params),
-  Bindings = Bs#{ParamName => get_binding_value(ParamName, Req)},
-  Params#{<<"bindings">> => Bindings}.
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec get_query_param(binary(), map(), term()) -> map().
-get_query_param(QueryName, Params, Req) ->
-  QVs = maps:get(<<"query-values">>, Params),
-  QueryValues = QVs#{QueryName => get_query_value(QueryName, Req)},
-  Params#{<<"query-values">> => QueryValues}.
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec get_body_content(term()) -> map().
-get_body_content(Req) ->
+-spec get_body_content(map(), term()) -> map().
+get_body_content(ParamValues, Req) ->
   case get_body(Req) of
     {error, Reason} ->
       {error, Reason};
 
     Body0 ->
-      #{<<"body">> => Body0}
+      ParamValues#{<<"body">> => Body0}
   end.
 
 %% -----------------------------------------------------------------------------
@@ -215,3 +203,22 @@ prepare_body(Body) ->
       end
   end.
 
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec get_value(map(), binary()) -> number() | binary() | atom().
+get_value(ParamCfg, Value) ->
+  #{
+    <<"schema">> := #{
+      <<"type">> := Type
+    }
+  } = ParamCfg,
+
+  case Type of
+    <<"number">> -> binary_to_integer(Value);
+    <<"integer">> -> binary_to_integer(Value);
+    <<"string">> -> Value;
+    <<"boolean">> -> binary_to_atom(Value);
+    <<"array">> -> Value
+  end.

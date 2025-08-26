@@ -46,7 +46,7 @@
 %% -----------------------------------------------------------------------------
 -spec domains() -> tuple().
 domains() ->
-	CfgFile = garm_env:get(cfg_file),
+	CfgFile = cfg_file(),
 
 	case filelib:is_file(CfgFile) of
 		true ->
@@ -79,7 +79,7 @@ domains() ->
 %% -----------------------------------------------------------------------------
 -spec config_path() -> tuple().
 config_path() ->
-	CfgFile = garm_env:get(cfg_file),
+	CfgFile = cfg_file(),
 
 	case filelib:is_file(CfgFile) of
 		true ->
@@ -167,14 +167,15 @@ load_domain_cfg(DomainKey, Path, FileName) ->
 									cfg => Config}),
 
 			case lists:keyfind("operations", 1, Config) of
-				{_, Operations} ->
-					Operations0 = create_map(Operations),
+				{_, OperationsCfg} ->
+					OperationsCfg0 = create_map(OperationsCfg),
 
 					?LOG_DEBUG(#{description => "Operations from domain config was loaded",
 											file => FileName0,
-											operations => Operations0}),
+											operations => OperationsCfg0}),
 
-					set(DomainKey, Operations0);
+					set(DomainKey, OperationsCfg0),
+					OperationsCfg0;
 
 				false ->
 					error(config_domains_not_found)
@@ -323,3 +324,12 @@ filter(Path, Files, ExtentionFile) ->
          end
       end,
   lists:foldl(F, [], Files).
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec cfg_file() -> term().
+cfg_file() ->
+	{ok, Value} = application:get_env(?APP, cfg_file),
+	Value.

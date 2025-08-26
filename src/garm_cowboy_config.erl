@@ -23,7 +23,7 @@
 %% @end
 %% -----------------------------------------------------------------------------
 
--module(garm_router).
+-module(garm_cowboy_config).
 
 -include_lib("kernel/include/logger.hrl").
 
@@ -42,21 +42,21 @@
 %% public functions
 %% =============================================================================
 
--export([get_paths/2]).
+-export([get_api_paths/2]).
 
 %% -----------------------------------------------------------------------------
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec get_paths({binary(), binary()}, map()) ->  protocol().
-get_paths({Path, DomainKey}, DomainCfg) ->
+-spec get_api_paths({binary(), binary()}, map()) ->  protocol().
+get_api_paths({Path, DomainKey}, DomainCfg) ->
   
   Handler = maps:get(<<"handler">>, DomainCfg, handler_undefined),
   ValidBody = maps:get(<<"validBody">>, DomainCfg, valid_body_undefined),
   ValidResponse = maps:get(<<"validResponse">>, DomainCfg, valid_response_undefined),
   AuthControl = maps:get(<<"authControl">>, DomainCfg, auth_control_undefined),
   Adapter = maps:get(<<"adapter">>, DomainCfg, adapter_undefined),
-
+  
   Paths = build_paths({Path, DomainKey}),
   [
     {'_',
@@ -64,10 +64,6 @@ get_paths({Path, DomainKey}, DomainCfg) ->
         || {ApiPath, MethodsCfg} <- Paths]
     }
   ].
-
-%% =============================================================================
-%% private functions
-%% =============================================================================
 
 %% -----------------------------------------------------------------------------
 %% @doc

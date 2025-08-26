@@ -27,13 +27,36 @@
 
 -include_lib("kernel/include/logger.hrl").
 
--include("http_commons.hrl").
-
 %% =============================================================================
 %% public functions
 %% =============================================================================
 
+-export([start/2]).
 -export([process/3]).
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec start(binary(), map()) -> term().
+start(DomainKey, OperationsCfg) ->
+
+	?LOG_DEBUG(#{description => "Start adapter",
+				operations => OperationsCfg,
+				domain => DomainKey}),
+
+	F = fun(OperationID, OperationCfg) ->
+				Timeout = maps:get(<<"timeout">>, OperationCfg, 60000),
+				MaxConnections = maps:get(<<"max_connections">>, OperationCfg, 100),
+				Options = [{timeout, Timeout}, {max_connections, MaxConnections}],
+				ok = hackney_pool:start_pool(OperationID, Options),
+				?LOG_NOTICE(#{description => <<"HTTP reverse proxy [pool: ", OperationID/binary, "] was started">>,
+										domain => DomainKey, operation_id => OperationID,
+										timeout => Timeout, max_connections => MaxConnections})
+		end,
+
+	maps:foreach(F, OperationsCfg).
+
 
 %% -----------------------------------------------------------------------------
 %% @doc
@@ -49,13 +72,13 @@ process(DomainKey, OperationID, Populated) ->
 						op_id => OperationID,
 						populated => Populated}),
             
-	Headers = maps:get(<<"headers">>, Populated),
+	Headers = maps:get(<<"headers-ext">>, Populated),
 	Bindings = maps:get(<<"bindings">>, Populated),
 	Body = maps:get(<<"body">>, Populated),
 
 	OpCfg = maps:get(OperationID, Cfg),
 
-	case call(Headers, Bindings, Body, OpCfg) of
+	case call(OperationID, Headers, Bindings, Body, OpCfg) of
 		{ok, Status, RespHeaders, ResBody} ->
 			garm_http_response:ok(Status, ResBody);
 
@@ -71,8 +94,8 @@ process(DomainKey, OperationID, Populated) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
--spec call(map(), map(), map(), map()) -> term().
-call(Headers, Bindings, Body, OpCfg) -> 
+-spec call(binary(), map(), map(), map(), map()) -> term().
+call(OperationID, Headers, Bindings, Body, OpCfg) -> 
 
 	Headers0 = maps:to_list(Headers),
 	Payload = thoas:encode(Body),
@@ -80,11 +103,11 @@ call(Headers, Bindings, Body, OpCfg) ->
 
 	F = fun(K, V, Url0) ->
 				K0 = list_to_binary([<<"{">>, K, <<"}">>]),
-				binary:replace(Url0, K0, V)
+				binary:replace(Url0, K0, garm_utils:to_binary(V))
 		end,
 	Url1 = maps:fold(F, Url, Bindings),
 
-	Options = [],
+	Options = [{pool, OperationID}],
 
 	?LOG_DEBUG(#{description => "Call to host",
 						method => Method,

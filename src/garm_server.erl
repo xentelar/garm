@@ -59,7 +59,8 @@ start_domains() ->
 
   F = fun(DomainKey, DomainCfg) ->
         Port = maps:get(<<"apiPort">>, DomainCfg),
-        load_domain_cfg(DomainKey, DomainCfg, Path),
+        OperationsCfg = load_domain_cfg(DomainKey, DomainCfg, Path),
+        start_adapter(DomainKey, DomainCfg, OperationsCfg),
         {Transport, TransportOpts} = socket_transport(IP, Port, NetOpts),
         %ExtraOpts = maps:get(cowboy_extra_opts, Params, []),
         CowboyOpts = api_config({Path, DomainKey}, DomainCfg),
@@ -110,12 +111,14 @@ load_domain_cfg(DomainKey, DomainCfg, Path) ->
   case maps:get(<<"cfg">>, DomainCfg, cfg_undefined) of
     cfg_undefined ->
       ?LOG_DEBUG(#{description => "Domain cfg not found", 
-                domain => DomainKey});
+                domain => DomainKey}),
+      #{};
 
     CfgFileName ->
-      garm_config:load_domain_cfg(DomainKey, Path, CfgFileName),
+      OperationsCfg = garm_config:load_domain_cfg(DomainKey, Path, CfgFileName),
       ?LOG_DEBUG(#{description => "Domain cfg was loaded", 
-                domain => DomainKey})
+                domain => DomainKey, operations_cfg => OperationsCfg}),
+      OperationsCfg
   end.
 
 %% -----------------------------------------------------------------------------
@@ -132,7 +135,7 @@ api_config({Path, DomainKey}, DomainCfg) ->
 %% -----------------------------------------------------------------------------
 -spec default_dispatch({binary(), binary()}, map()) -> map().
 default_dispatch({Path, DomainKey}, DomainCfg) ->
-  ApiPaths = garm_router:get_paths({Path, DomainKey}, DomainCfg),
+  ApiPaths = garm_cowboy_config:get_api_paths({Path, DomainKey}, DomainCfg),
   #{dispatch => cowboy_router:compile(ApiPaths)}.
 
 %% -----------------------------------------------------------------------------
@@ -151,4 +154,52 @@ socket_transport(IP, Port, NetOpts) ->
 
     undefined ->
       {tcp, Opts}
+  end.
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec start_adapter(binary(), map(), map()) -> term().
+start_adapter(DomainKey, DomainCfg, OperationsCfg) ->
+  case maps:get(<<"adapter">>, DomainCfg, adapter_undefined) of
+    adapter_undefined ->
+      ?LOG_DEBUG(#{description => "Adapter not found", 
+                    domain_key => DomainKey});
+    Adapter ->
+      try 
+        case call(Adapter, start, DomainKey, OperationsCfg) of
+          no_call ->
+            ?LOG_ERROR(#{description => "start callback not found", 
+                      adapter => Adapter, callback => start, 
+                      args => [DomainKey, OperationsCfg],
+                      domain_key => DomainKey});
+
+          _ ->
+            ?LOG_DEBUG(#{description => "start callback was executed", 
+                      adapter => Adapter, callback => start, 
+                      args => [DomainKey, OperationsCfg],
+                      domain_key => DomainKey})
+        end
+      catch
+        Class:Exception:Stacktrace ->
+          ?LOG_ERROR(#{description => "general error in start callback", 
+                      adapter => Adapter, callback => start, error_class => Class,
+                      args => [DomainKey, OperationsCfg], msg => Exception, 
+                      stacktrace => Stacktrace, domain_key => DomainKey})
+      end
+  end.
+
+%% -----------------------------------------------------------------------------
+%% @doc
+%% @end
+%% -----------------------------------------------------------------------------
+-spec call(atom(), atom(), binary(), map()) -> term() | atom() | tuple().
+call(Handler, Callback, DomainKey, Populated) ->
+  try 
+    Handler:Callback(DomainKey, Populated)
+  catch Class:Reason:_Stacktrace ->
+    ?LOG_ERROR(#{description => "Handler is not loaded", 
+          handler => Handler, error => {Class, Reason}}),
+    no_call
   end.
