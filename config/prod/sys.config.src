@@ -1,6 +1,6 @@
 [
   {garm, [
-    {cfg_file, ${CFG_FILE}}
+    {cfg_file, "${CFG_FILE}"}
   ]},
 
   {kernel, [
