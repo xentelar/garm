@@ -26,12 +26,6 @@
 -define(IMAGE_HEADER,     #{<<"content-type">> => <<"image/png">>}).
 
 %% -----------------------------------------------------------------------------
-%% @doc Error messages
-%% @end
-%% -----------------------------------------------------------------------------
--define(TOKEN_NOT_FOUNT,          "token.not.fount").
-
-%% -----------------------------------------------------------------------------
 %% @doc HTTP methods
 %% @end
 %% -----------------------------------------------------------------------------
@@ -120,6 +114,8 @@
 -define(NOT_EXTENDED_HTTP_CODE,                     510).
 -define(NETWORK_AUTHENTICATION_REQUIRED_HTTP_CODE,  511).
 
+-define(INTERNAL_GATEWAY_ERROR_HTTP_CODE,           512).
+
 -define(HTTP_MSG_OK,                               {?OK_HTTP_CODE, <<"Ok">>}).
 -define(HTTP_MSG_CREATED,                          {?CREATED_HTTP_CODE, <<"The request has been fulfilled">>}).
 -define(HTTP_MSG_ACCEPTED,                         {?ACCEPTED_HTTP_CODE, <<"The request has been accepted for processing">>}).
@@ -181,6 +177,7 @@
 -define(HTTP_MSG_NOT_EXTENDED,                     {?NOT_EXTENDED_HTTP_CODE, <<"Not Extended (RFC 2774)">>}).
 -define(HTTP_MSG_NETWORK_AUTHENTICATION_REQUIRED,  {?NETWORK_AUTHENTICATION_REQUIRED_HTTP_CODE, <<"Network Authentication Required (RFC 6585)">>}).
 
+-define(HTTP_MSG_INTERNAL_GATEWAY_ERROR,           {?INTERNAL_GATEWAY_ERROR_HTTP_CODE, <<"Internal Gateway Error">>}).
 
 -define(HTTP_DEFAULT_MSGS, [?HTTP_MSG_OK,
                             ?HTTP_MSG_CREATED,
@@ -241,4 +238,6 @@
                             ?HTTP_MSG_INSUFFICIENT_STORAGE,
                             ?HTTP_MSG_LOOP_DETECTED,
                             ?HTTP_MSG_NOT_EXTENDED,
-                            ?HTTP_MSG_NETWORK_AUTHENTICATION_REQUIRED]).
+                            ?HTTP_MSG_NETWORK_AUTHENTICATION_REQUIRED,
+                          
+                            ?HTTP_MSG_INTERNAL_GATEWAY_ERROR]).

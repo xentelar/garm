@@ -79,11 +79,14 @@ process(DomainKey, OperationID, Populated) ->
 	OpCfg = maps:get(OperationID, Cfg),
 
 	case call(OperationID, Headers, Bindings, Body, OpCfg) of
-		{ok, Status, RespHeaders, ResBody} ->
-			garm_http_response:ok(Status, ResBody);
+		{ok, Status, RespHeaders} ->
+			garm_http_response:ok(Status, RespHeaders);
 
-		Error0 ->
-			garm_http_response:ko(Error0)
+		{ok, Status, RespHeaders, ResBody} ->
+			garm_http_response:ok(Status, RespHeaders, ResBody);
+
+		{error, Error} ->
+			garm_http_response:ko(Error)
 	end.
 
 %% =============================================================================
@@ -117,12 +120,33 @@ call(OperationID, Headers, Bindings, Body, OpCfg) ->
 
 	case hackney:request(Method, Url1, Headers0, Payload, Options) of
 		{ok, Status, RespHeaders, ClientRef} ->
-			{ok, ResBody} = hackney:body(ClientRef),
-			?LOG_DEBUG(#{description => "Response from host",
-								status => Status,
-								headers => RespHeaders,
+			F0 = fun({K, V}, Acc) -> Acc#{K => V} end,
+			RespHeaders0 = lists:foldl(F0, #{}, RespHeaders),
+			case hackney:body(ClientRef) of
+				{ok, ResBody} ->
+					?LOG_DEBUG(#{description => "Response from host",
+								status => Status, headers => RespHeaders,
 								body => ResBody}),
-			{ok, Status, RespHeaders, ResBody};
+					{ok, Status, RespHeaders0, ResBody};
+
+				ok ->
+					?LOG_DEBUG(#{description => "Response from host",
+								status => Status, headers => RespHeaders,
+								body => no_body}),
+					{ok, Status, RespHeaders0};
+
+				done ->
+					?LOG_DEBUG(#{description => "Response from host",
+								status => Status, headers => RespHeaders,
+								body => no_body}),
+					{ok, Status, RespHeaders0};
+
+				{error, Error0} ->
+					?LOG_ERROR(#{description => "Error while reading body response from host",
+								status => Status, headers => RespHeaders, 
+								error => Error0}),
+					{error, Error0}
+			end;
 
 		Error ->
 			?LOG_ERROR(#{description => "Call error",

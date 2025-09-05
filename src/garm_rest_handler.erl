@@ -500,7 +500,7 @@ maybe_process(DomainKey, Adapter, OperationID, Populated) ->
       ?LOG_ERROR(#{description => "callback process not found", 
                   adapter => Adapter, callback => process, 
                   args => [DomainKey, OperationID, Populated]}),
-      {500, #{}, <<>>};
+      garm_http_response:ko(?SERVICE_UNAVAILABLE_HTTP_CODE);
 
     {Code, Headers, Body} when is_number(Code) ->
       {Code, Headers, Body};
@@ -511,7 +511,7 @@ maybe_process(DomainKey, Adapter, OperationID, Populated) ->
                   class => Class, reason => Reason,
                   args => [DomainKey, OperationID, Populated],
                   stacktrace => Stacktrace}),
-      {500, #{}, <<>>}
+      garm_http_response:ko(?INTERNAL_GATEWAY_ERROR_HTTP_CODE, Reason)
   end.
 
 
@@ -539,14 +539,17 @@ process_response(Response, Req0, State = #state{operation_id = OperationID}) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
+-spec prepare_body(integer(), map() | binary()) -> binary().
 prepare_body(204, Body) when map_size(Body) == 0; length(Body) == 0 ->
   <<>>;
 prepare_body(304, Body) when map_size(Body) == 0; length(Body) == 0 ->
   <<>>;
 prepare_body(_Code, Body) when is_map(Body) ->
   thoas:encode(Body);
-prepare_body(_Code, Body) ->
-  Body.
+prepare_body(_Code, Body) when is_binary(Body) ->
+  Body;
+prepare_body(_Code, _Body) ->
+  error(unexpected_response).
 
 %% -----------------------------------------------------------------------------
 %% @doc

@@ -25,8 +25,6 @@
 
 -module(garm_health_handler).
 
--include_lib("kernel/include/logger.hrl").
-
 -include("http_commons.hrl").
 
 %% =============================================================================
@@ -42,6 +40,7 @@
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
+-spec init(cowboy_req:req(), tuple()) -> tuple().
 init(Req, Opts) ->
 	{cowboy_rest, Req, Opts}.
 
@@ -49,6 +48,7 @@ init(Req, Opts) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
+-spec allowed_methods(cowboy_req:req(), term()) -> tuple().
 allowed_methods(Req, State) ->
 	{[?GET], Req, State}.
 
@@ -56,6 +56,7 @@ allowed_methods(Req, State) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
+-spec resource_exists(cowboy_req:req(), _) -> tuple().
 resource_exists(Req, State) ->
 	do_response(Req, State).
 
@@ -63,6 +64,7 @@ resource_exists(Req, State) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
+-spec do_response(cowboy_req:req(), _) -> tuple().
 do_response(Req, State) ->
 
 	live(Req, State),
@@ -73,6 +75,7 @@ do_response(Req, State) ->
 %% @doc
 %% @end
 %% -----------------------------------------------------------------------------
+-spec live(cowboy_req:req(), _) -> cowboy_req:req().
 live(Req, _State) ->
 	
 	#{<<"healthy">> := HealthyList, 

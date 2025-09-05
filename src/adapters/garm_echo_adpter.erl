@@ -27,6 +27,8 @@
 
 -include_lib("kernel/include/logger.hrl").
 
+-include("http_commons.hrl").
+
 %% =============================================================================
 %% public functions
 %% =============================================================================
@@ -40,7 +42,9 @@
 %% -----------------------------------------------------------------------------
 -spec start(binary(), map()) -> term().
 start(DomainKey, OperationsCfg) ->
-	ok.
+	?LOG_INFO(#{description => "Started Echo adapter",
+						domain_key => DomainKey,
+						operations_cfg => OperationsCfg}).
 
 %% -----------------------------------------------------------------------------
 %% @doc
@@ -54,7 +58,9 @@ process(DomainKey, OperationID, Populated) ->
 						op_id => OperationID,
 						populated => Populated}),
 
-	garm_http_response:ok(Populated).
+	Rsp = thoas:encode(Populated),
+	Headers = #{<<"content-type">> => <<"application/json">>},
+	garm_http_response:ok(?OK_HTTP_CODE, Headers, Rsp).
 
 %% =============================================================================
 %% private functions
