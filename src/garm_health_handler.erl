@@ -1,6 +1,6 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Copyright (c) 2025 Xentelar Advanced Technologies. All Rights Reserved.
+%% Copyright (c) 2026 Xentelar Advanced Technologies. All Rights Reserved.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -18,12 +18,10 @@
 %%
 %% -----------------------------------------------------------------------------
 
-%% -----------------------------------------------------------------------------
-%% @doc 
-%% @end
-%% -----------------------------------------------------------------------------
-
 -module(garm_health_handler).
+
+-moduledoc """
+""".
 
 -include("http_commons.hrl").
 
@@ -36,34 +34,26 @@
 -export([resource_exists/2]).
 -export([do_response/2]).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec init(cowboy_req:req(), tuple()) -> tuple().
 init(Req, Opts) ->
 	{cowboy_rest, Req, Opts}.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec allowed_methods(cowboy_req:req(), term()) -> tuple().
 allowed_methods(Req, State) ->
 	{[?GET], Req, State}.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec resource_exists(cowboy_req:req(), _) -> tuple().
 resource_exists(Req, State) ->
 	do_response(Req, State).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec do_response(cowboy_req:req(), _) -> tuple().
 do_response(Req, State) ->
 
@@ -71,10 +61,8 @@ do_response(Req, State) ->
 
 	{stop, Req, State}.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec live(cowboy_req:req(), _) -> cowboy_req:req().
 live(Req, _State) ->
 	

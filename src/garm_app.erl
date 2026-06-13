@@ -1,6 +1,6 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Copyright (c) 2025 Xentelar Advanced Technologies. All Rights Reserved.
+%% Copyright (c) 2026 Xentelar Advanced Technologies. All Rights Reserved.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -18,12 +18,10 @@
 %%
 %% -----------------------------------------------------------------------------
 
-%% -----------------------------------------------------------------------------
-%% @doc 
-%% @end
-%% -----------------------------------------------------------------------------
-
 -module(garm_app).
+
+-moduledoc """
+""".
 
 -behaviour(application).
 
@@ -42,10 +40,8 @@
 -export([vsn/0]).
 -export([name/0]).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec start(term(), term()) -> term().
 start(_StartType, _StartArgs) ->
 	?LOG_NOTICE(#{description => "initializing garm"}),
@@ -53,45 +49,37 @@ start(_StartType, _StartArgs) ->
 	case garm_sup:start_link() of
 		{ok, _} = OK ->
 			start_cache(),
-			start_domains(),
+			start_server(),
 			OK;
 			
 		Error ->
 			Error
 	end.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec stop(term()) -> term().
 stop(_State) ->
     ok.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec info() -> tuple().
 info() ->
 	Apps = application:which_applications(),
 	{_, Description, Vsn} = lists:keyfind(?APP, 1, Apps),
 	{Description, Vsn}.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec vsn() -> binary().
 vsn() ->
 	Apps = application:which_applications(),
 	{_, _, Vsn} = lists:keyfind(?APP, 1, Apps),
 	list_to_binary(Vsn).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec name() -> binary().
 name() ->
 	Vsn = vsn(),
@@ -102,31 +90,14 @@ name() ->
 %% private functions
 %% =============================================================================
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec start_domains() -> term().
-start_domains() ->
-	try
+-doc """
+""".
+-spec start_server() -> ok.
+start_server() ->
+	garm_server:init().
 
-		garm_server:start(),
-		?LOG_NOTICE(#{description => "api gateway was started"})
-
-	catch
-		error:Exception:Stacktrace ->
-			?LOG_ERROR(#{description => "the server could not start",
-									exception => Exception,
-									stacktrace => Stacktrace}),
-			error(server_start_error)
-	end.
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec start_cache() -> term().
+-doc """
+""".
+-spec start_cache() -> ok.
 start_cache() ->
-	{ok, _} = cache:start_link(user_info, [{n, 20}, {ttl, 1800}]),
-	?LOG_NOTICE(#{description => "cache was started"}),
-	ok.
+	garm_cache_manager:init_cache().

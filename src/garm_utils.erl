@@ -1,6 +1,6 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Copyright (c) 2025 Xentelar Advanced Technologies. All Rights Reserved.
+%% Copyright (c) 2026 Xentelar Advanced Technologies. All Rights Reserved.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -18,12 +18,10 @@
 %%
 %% -----------------------------------------------------------------------------
 
-%% -----------------------------------------------------------------------------
-%% @doc 
-%% @end
-%% -----------------------------------------------------------------------------
-
 -module(garm_utils).
+
+-moduledoc """
+""".
 
 
 %% =============================================================================
@@ -47,10 +45,8 @@
 
 -export([set_resp_headers/2]).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec to_binary(iodata() | atom() | number()) -> binary().
 to_binary(V) when is_binary(V)  -> V;
 to_binary(V) when is_list(V)    -> iolist_to_binary(V);
@@ -58,18 +54,14 @@ to_binary(V) when is_atom(V)    -> atom_to_binary(V, utf8);
 to_binary(V) when is_integer(V) -> integer_to_binary(V);
 to_binary(V) when is_float(V)   -> float_to_binary(V).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec to_list(iodata() | atom() | number()) -> string().
 to_list(V) when is_list(V)    -> V;
 to_list(V)            -> binary_to_list(to_binary(V)).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec to_float(iodata()) -> number().
 to_float(V) ->
   Data = iolist_to_binary([V]),
@@ -84,10 +76,8 @@ to_float(V) ->
 
 %%
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec to_int(integer() | binary() | list()) -> integer().
 to_int(Data) when is_integer(Data) ->
   Data;
@@ -96,10 +86,8 @@ to_int(Data) when is_binary(Data) ->
 to_int(Data) when is_list(Data) ->
   list_to_integer(Data).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec set_resp_headers([{binary(), iodata()}], cowboy_req:req()) -> cowboy_req:req().
 set_resp_headers([], Req) ->
   Req;
@@ -107,44 +95,34 @@ set_resp_headers([{K, V} | T], Req0) ->
   Req = cowboy_req:set_resp_header(K, V, Req0),
   set_resp_headers(T, Req).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec to_header(iodata() | atom() | number()) -> binary().
 to_header(Name) ->
   Prepared = to_binary(Name),
   to_lower(Prepared).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec to_qs(iodata() | atom() | number()) -> binary().
 to_qs(Name) ->
   to_binary(Name).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec to_binding(iodata() | atom() | number()) -> atom().
 to_binding(Name) ->
   Prepared = to_binary(Name),
   binary_to_atom(Prepared, utf8).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec get_opt(any(), []) -> any().
 get_opt(Key, Opts) ->
   get_opt(Key, Opts, undefined).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec get_opt(any(), [], any()) -> any().
 get_opt(Key, Opts, Default) ->
   case lists:keyfind(Key, 1, Opts) of
@@ -152,18 +130,14 @@ get_opt(Key, Opts, Default) ->
     false -> Default
   end.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec to_lower(binary()) -> binary().
 to_lower(S) ->
   to_case(lower, S, <<>>).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec to_upper(binary()) -> binary().
 to_upper(S) ->
   to_case(upper, S, <<>>).
@@ -172,10 +146,8 @@ to_upper(S) ->
 %% private functions
 %% =============================================================================
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 to_case(_Case, <<>>, Acc) ->
   Acc;
 
@@ -188,10 +160,8 @@ to_case(Case = lower, <<C, Rest/binary>>, Acc) ->
 to_case(Case = upper, <<C, Rest/binary>>, Acc) ->
   to_case(Case, Rest, <<Acc/binary, (to_upper_char(C))>>).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 to_lower_char(C) when is_integer(C), $A =< C, C =< $Z ->
   C + 32;
 to_lower_char(C) when is_integer(C), 16#C0 =< C, C =< 16#D6 ->
@@ -201,10 +171,8 @@ to_lower_char(C) when is_integer(C), 16#D8 =< C, C =< 16#DE ->
 to_lower_char(C) ->
   C.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 to_upper_char(C) when is_integer(C), $a =< C, C =< $z ->
   C - 32;
 to_upper_char(C) when is_integer(C), 16#E0 =< C, C =< 16#F6 ->

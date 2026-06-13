@@ -1,6 +1,6 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Copyright (c) 2025 Xentelar Advanced Technologies. All Rights Reserved.
+%% Copyright (c) 2026 Xentelar Advanced Technologies. All Rights Reserved.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -18,12 +18,10 @@
 %%
 %% -----------------------------------------------------------------------------
 
-%% -----------------------------------------------------------------------------
-%% @doc 
-%% @end
-%% -----------------------------------------------------------------------------
-
 -module(garm_sup).
+
+-moduledoc """
+""".
 
 -behaviour(supervisor).
 
@@ -36,27 +34,23 @@
 -export([start_link/0]).
 -export([init/1]).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec start_link() -> term().
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% sup_flags() = #{strategy => strategy(),         % optional
-%%                 intensity => non_neg_integer(), % optional
-%%                 period => pos_integer()}        % optional
-%% child_spec() = #{id => child_id(),       % mandatory
-%%                  start => mfargs(),      % mandatory
-%%                  restart => restart(),   % optional
-%%                  shutdown => shutdown(), % optional
-%%                  type => worker(),       % optional
-%%                  modules => modules()}   % optional
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+sup_flags() = #{strategy => strategy(),         % optional
+                intensity => non_neg_integer(), % optional
+                period => pos_integer()}        % optional
+child_spec() = #{id => child_id(),       % mandatory
+                start => mfargs(),      % mandatory
+                restart => restart(),   % optional
+                shutdown => shutdown(), % optional
+                type => worker(),       % optional
+                modules => modules()}   % optional
+""".
 -spec init(term()) -> term().
 init([]) ->
     SupFlags = #{

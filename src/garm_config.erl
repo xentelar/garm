@@ -1,6 +1,6 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Copyright (c) 2025 Xentelar Advanced Technologies. All Rights Reserved.
+%% Copyright (c) 2026 Xentelar Advanced Technologies. All Rights Reserved.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -18,12 +18,10 @@
 %%
 %% -----------------------------------------------------------------------------
 
-%% -----------------------------------------------------------------------------
-%% @doc 
-%% @end
-%% -----------------------------------------------------------------------------
-
 -module(garm_config).
+
+-moduledoc """
+""".
 
 -include_lib("kernel/include/logger.hrl").
 
@@ -40,10 +38,8 @@
 -export([config_path/0]).
 -export([list_files/2]).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec domains() -> tuple().
 domains() ->
 	CfgFile = cfg_file(),
@@ -73,10 +69,8 @@ domains() ->
 			error(config_file_not_found)
 	end.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec config_path() -> tuple().
 config_path() ->
 	CfgFile = cfg_file(),
@@ -93,10 +87,8 @@ config_path() ->
 			error(config_file_not_found)
 	end.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec domain_api(binary(), binary()) -> list().
 domain_api(Path, FileName) ->
 	FileName0 = list_to_binary([Path, <<"/">>, FileName, <<".yaml">>]),
@@ -150,10 +142,8 @@ domain_api(Path, FileName) ->
 			error(domain_file_not_found)
 	end.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec load_domain_cfg(binary(), binary(), binary()) -> map().
 load_domain_cfg(DomainKey, Path, FileName) ->
 	FileName0 = list_to_binary([Path, <<"/">>, FileName]),
@@ -185,19 +175,15 @@ load_domain_cfg(DomainKey, Path, FileName) ->
 			error(config_file_not_found)
 	end.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec find(Key :: atom()) -> undefined | {ok, term()}.
 find(Key) ->
   application:get_env(?APP, Key).
 
-%% -----------------------------------------------------------------------------
-%% @doc list required files on path
-%% @end
-%% @private
-%% -----------------------------------------------------------------------------
+-doc """
+list the required files on path
+""".
 -spec list_files(file:name_all(), string()) -> [binary()].
 list_files(Path, ExtentionFile) ->
 	case filelib:is_dir(Path) of
@@ -213,39 +199,46 @@ list_files(Path, ExtentionFile) ->
 %% private functions
 %% =============================================================================
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec set(atom() | tuple(), term()) -> term().
 set(KeyCfg, Cfg) ->
 	application:set_env(?APP, KeyCfg, Cfg, [{persistent, false}]).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec create_map(list()) -> map().
 create_map(Config) ->
 	?LOG_DEBUG(#{description => "trasnform tuple to map",
 							tuple => Config}),
 	create_map(Config, #{}).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec create_map(list(), map()) -> map().
 create_map([], Acc) ->
 	Acc;
 
-create_map([{"parameters", Values} | T], Acc) ->
-	Key0 = <<"parameters">>,
-	F = fun(Value) ->
-				create_map(Value, #{})
-		end,
-	Acc0 = Acc#{Key0 => lists:map(F, Values)},
-	create_map(T, Acc0);
+% create_map([{"parameters", Values} | T], Acc) ->
+% 	Key0 = <<"parameters">>,
+% 	F = fun(Value) ->
+% 				create_map(Value, #{})
+% 		end,
+% 	Acc0 = Acc#{Key0 => lists:map(F, Values)},
+% 	create_map(T, Acc0);
+
+ create_map([{"apiPort", Value} | T], Acc) ->
+ 	Key0 = <<"apiPort">>,
+	Value0 =
+	case Value of
+		N when is_integer(N) -> N;
+		S when is_list(S) -> 
+			S0 = lists:flatten(string:replace(S, "$(", "")),
+			S1 = lists:flatten(string:replace(S0, ")", "")),
+			list_to_integer(os:getenv(S1))
+	end,
+ 	Acc0 = Acc#{Key0 => Value0},
+ 	create_map(T, Acc0);
 
  create_map([{"handler", Value} | T], Acc) ->
  	Key0 = <<"handler">>,
@@ -303,11 +296,9 @@ create_map(Val, _Acc) ->
 			list_to_binary(Val)
 	end.
 
-%% -----------------------------------------------------------------------------
-%% @doc filter required files from other files
-%% @end
-%% @private
-%% -----------------------------------------------------------------------------
+-doc """
+filter the required files from other files
+""".
 -spec filter(file:name_all(), [string()], string()) -> [binary()].
 filter(Path, Files, ExtentionFile) ->
   F = fun(V, Aux) ->
@@ -325,10 +316,8 @@ filter(Path, Files, ExtentionFile) ->
       end,
   lists:foldl(F, [], Files).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec cfg_file() -> term().
 cfg_file() ->
 	{ok, Value} = application:get_env(?APP, cfg_file),

@@ -1,6 +1,6 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Copyright (c) 2025 Xentelar Advanced Technologies. All Rights Reserved.
+%% Copyright (c) 2026 Xentelar Advanced Technologies. All Rights Reserved.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -18,100 +18,55 @@
 %%
 %% -----------------------------------------------------------------------------
 
-%% -----------------------------------------------------------------------------
-%% @doc 
-%% @end
-%% -----------------------------------------------------------------------------
-
 -module(garm_http_response).
 
+-moduledoc """
+""".
+
 -include("http_commons.hrl").
+
+-define(UNKNOWN_STATUS, <<"Unknown Status">>).
 
 %% =============================================================================
 %% public functions
 %% =============================================================================
 
--export([ok/2]).
--export([ok/3]).
+-export([build/2]).
+-export([build/3]).
 
--export([ko/1]).
--export([ko/2]).
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec ok(integer(), map()) -> tuple().
-ok(Status, Headers) ->
-	msg(Status, Headers).
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec ok(integer(), map(), binary()) -> tuple().
-ok(Status, Headers, Body) ->
+-doc """
+""".
+-spec build(non_neg_integer(), map()) -> tuple().
+build(Status, Headers) ->
+	Body = status_description(Status),
 	msg(Status, Headers, Body).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec ko(integer()) -> tuple().
-ko(Code) when is_integer(Code) ->
-	Msg = case lists:keyfind(Code, 1, ?HTTP_DEFAULT_MSGS) of
-			{_, M} ->
-				M;
-
-			false ->
-				<<"Unknown Code">>
-		end,
-	ko(Code, Msg);
-
-ko(Error) ->
-	ko(?BAD_GATEWAY_HTTP_CODE, Error).
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec ko(integer(), binary()) -> tuple().
-ko(Code, Msg) ->
-	Body = #{
-						<<"status">> => Code,
-						<<"message">> => term_to_msg(Msg)
-					},
-	msg(Code, #{}, Body).
+-doc """
+""".
+-spec build(non_neg_integer(), map(), binary()) -> tuple().
+build(Status, Headers, Body) ->
+	Body0 = 
+	case lists:keyfind(Status, 1, ?HTTP_DEFAULT_MSGS) of
+		{_S, _M} -> Body;
+		false -> ?UNKNOWN_STATUS
+	end,
+	msg(Status, Headers, Body0).
 
 %% =============================================================================
 %% private functions
 %% =============================================================================
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec msg(integer(), map()) -> tuple().
-msg(Code, Headers) ->
-	{Code, Headers, <<>>}.
+-doc """
+""".
+-spec msg(non_neg_integer(), map(), binary()) -> tuple().
+msg(Status, Headers, Body) ->
+	{Status, Headers, Body}.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec msg(integer(), map(), binary()) -> tuple().
-msg(Code, Headers, Body) ->
-	{Code, Headers, Body}.
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec term_to_msg(term()) -> binary().
-term_to_msg(Msg0) when not is_binary(Msg0) ->
-	R= io_lib:format("~p",[Msg0]),
-	M = lists:flatten(R),
-	list_to_binary(M);
-
-term_to_msg(Msg) when is_binary(Msg) ->
-	Msg.
+-doc """
+""".
+-spec status_description(non_neg_integer()) -> binary().
+status_description(Status) ->
+	case lists:keyfind(Status, 1, ?HTTP_DEFAULT_MSGS) of
+		{_, Description} -> Description;
+		false -> ?UNKNOWN_STATUS
+	end.

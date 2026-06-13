@@ -1,6 +1,6 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Copyright (c) 2025 Xentelar Advanced Technologies. All Rights Reserved.
+%% Copyright (c) 2026 Xentelar Advanced Technologies. All Rights Reserved.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -18,12 +18,10 @@
 %%
 %% -----------------------------------------------------------------------------
 
-%% -----------------------------------------------------------------------------
-%% @doc 
-%% @end
-%% -----------------------------------------------------------------------------
-
 -module(garm_rest_handler).
+
+-moduledoc """
+""".
 
 -include_lib("kernel/include/logger.hrl").
 
@@ -82,10 +80,8 @@
 %% Handler
 -export([process_request/2]).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec init(Req :: req(), Opts :: garm_cowboy_config:init_opts()) ->
   {cowboy_rest, Req :: req(), State :: state()}.
 init(Req, {MethodsCfg, ValidBody, AuthControl, Adapter, ValidResponse}) ->
@@ -121,10 +117,8 @@ init(Req, {MethodsCfg, ValidBody, AuthControl, Adapter, ValidResponse}) ->
 
   {cowboy_rest, Req, State}.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec known_methods(Req :: req(), State :: state()) ->
   {Value :: [binary()], Req :: req(), State :: state()}.
 known_methods(Req, #state{origin = Origin, methods = Methods} = State) ->
@@ -141,10 +135,8 @@ known_methods(Req, #state{origin = Origin, methods = Methods} = State) ->
       {Methods, Req, State}
   end.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec uri_too_long(Req :: req(), State :: state()) ->
   {Value :: [binary()], Req :: req(), State :: state()}.
 uri_too_long(Req, #state{origin = Origin} = State) ->
@@ -168,10 +160,8 @@ uri_too_long(Req, #state{origin = Origin} = State) ->
       end
   end.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec allowed_methods(Req :: req(), State :: state()) ->
   {Value :: [binary()], Req :: req(), State :: state()}.
 allowed_methods(Req, #state{origin = Origin, methods = Methods} = State) ->
@@ -188,10 +178,8 @@ allowed_methods(Req, #state{origin = Origin, methods = Methods} = State) ->
       {Methods, Req, State}
   end.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec malformed_request(Req :: req(), State :: state()) ->
   {Value :: false, Req :: req(), State :: state()}.
 malformed_request(Req, #state{origin = Origin, cfg = Cfg} = State) ->
@@ -207,10 +195,8 @@ malformed_request(Req, #state{origin = Origin, cfg = Cfg} = State) ->
       {true, resp_headers(Req, Origin), State}
   end.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec is_authorized(Req :: req(), State :: state()) ->
   {Value :: result(), Req :: req(), State :: state()}.
 is_authorized(Req, #state{origin = Origin} = State) ->
@@ -262,28 +248,22 @@ is_authorized(Req, #state{origin = Origin} = State) ->
       end
   end.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec forbidden(Req :: req(), State :: state()) ->
   {Value :: false, Req :: req(), State :: state()}.
 forbidden(Req, #state{origin = _Origin} = State) ->
   {false, Req, State}.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec rate_limited(Req :: req(), State :: state()) ->
   {Value :: false, Req :: req(), State :: state()}.
 rate_limited(Req, #state{origin = _Originfg} = State) ->
   {false, Req, State}.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec valid_content_headers(Req :: req(), State :: state()) ->
   {Value :: boolean(), Req :: req(), State :: state()}.
 valid_content_headers(Req, #state{origin = Origin} = State) ->
@@ -320,10 +300,8 @@ valid_content_headers(Req, #state{origin = Origin} = State) ->
       end
   end.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec valid_entity_length(Req :: req(), State :: state()) ->
   {Value :: true, Req :: req(), State :: state()}.
 valid_entity_length(Req, #state{origin = Origin} = State) ->
@@ -355,10 +333,8 @@ valid_entity_length(Req, #state{origin = Origin} = State) ->
       end
   end.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec content_types_provided(Req :: req(), State :: state()) ->
   {Value :: content_types(), Req :: req(), State :: state()}.
 content_types_provided(Req, #state{origin = Origin, cfg = Cfg} = State) ->
@@ -381,10 +357,8 @@ content_types_provided(Req, #state{origin = Origin, cfg = Cfg} = State) ->
             content_types_provided => ContentTypes}),
   {ContentTypes, Req1, State}.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec content_types_accepted(Req :: req(), State :: state()) ->
   {Value :: content_types(), Req :: req(), State :: state()}.
 content_types_accepted(Req, #state{origin = Origin, cfg = Cfg} = State) ->
@@ -409,19 +383,15 @@ content_types_accepted(Req, #state{origin = Origin, cfg = Cfg} = State) ->
             content_types_accepted => ContentTypes}),
   {ContentTypes, Req1, State}.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec delete_resource(Req :: req(), State :: state()) ->
   processed_response().
 delete_resource(Req, State) ->
   process_request(Req, State).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec options(Req :: req(), State :: state()) ->
   {Value :: true, Req :: req(), State :: state()}.
 options(Req0, #state{origin = Origin, methods = Methods} = State) ->
@@ -441,10 +411,8 @@ options(Req0, #state{origin = Origin, methods = Methods} = State) ->
             headers => cowboy_req:resp_headers(Req)}),
   {ok, Req, State}.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec process_request(req(), state()) -> processed_response().
 process_request(Req, State = #state{operation_id = OperationID,
                                         cfg = MethodCfg,
@@ -489,10 +457,8 @@ process_request(Req, State = #state{operation_id = OperationID,
 %% private functions
 %% =============================================================================
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec maybe_process(binary(), module(), binary(), map()) -> tuple().
 maybe_process(DomainKey, Adapter, OperationID, Populated) ->
   case call(Adapter, process, DomainKey, OperationID, Populated) of
@@ -515,10 +481,8 @@ maybe_process(DomainKey, Adapter, OperationID, Populated) ->
   end.
 
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec process_response(result_ok() | result_error(), req(), state()) ->
   processed_response().
 process_response(Response, Req0, State = #state{operation_id = OperationID}) ->
@@ -535,10 +499,8 @@ process_response(Response, Req0, State = #state{operation_id = OperationID}) ->
       {stop, Req2, State}
   end.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec prepare_body(integer(), map() | binary()) -> binary().
 prepare_body(204, Body) when map_size(Body) == 0; length(Body) == 0 ->
   <<>>;
@@ -551,20 +513,16 @@ prepare_body(_Code, Body) when is_binary(Body) ->
 prepare_body(_Code, _Body) ->
   error(unexpected_response).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec resp_headers(term(), binary()) -> term().
 resp_headers(Req, Origin) ->
   cowboy_req:set_resp_headers(#{
 		<<"Access-Control-Allow-Origin">> => Origin
 	}, Req).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec call(atom(), atom(), binary(), binary(), map()) -> term() | atom() | tuple().
 call(Handler, Callback, DomainKey, OperationID, Populated) ->
   case erlang:function_exported(Handler, Callback, 3) of
@@ -583,10 +541,8 @@ call(Handler, Callback, DomainKey, OperationID, Populated) ->
       no_call
   end.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec content_type(binary()) -> tuple().
 content_type(<<"text/plain">>) ->
   {<<"text">>,<<"plain">>, '*'};

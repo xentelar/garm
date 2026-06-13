@@ -1,6 +1,6 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Copyright (c) 2025 Xentelar Advanced Technologies. All Rights Reserved.
+%% Copyright (c) 2026 Xentelar Advanced Technologies. All Rights Reserved.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -18,12 +18,10 @@
 %%
 %% -----------------------------------------------------------------------------
 
-%% -----------------------------------------------------------------------------
-%% @doc 
-%% @end
-%% -----------------------------------------------------------------------------
-
 -module(garm_jwt_auth).
+
+-moduledoc """
+""".
 
 -include_lib("kernel/include/logger.hrl").
 
@@ -37,10 +35,8 @@
 
 -export([is_authorized/2]).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------  
+-doc """
+""".  
 -spec is_authorized(Token :: binary(), Scopes :: list()) -> {true, #{}}.
 is_authorized(Token, Scopes) ->
   
@@ -57,10 +53,8 @@ is_authorized(Token, Scopes) ->
 %% private functions
 %% =============================================================================
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec validate_bearer(binary()) -> tuple().
 validate_bearer(Bearer) ->
 	Token = binary:replace(Bearer, <<"Bearer ">>, <<"">>),
@@ -83,10 +77,8 @@ validate_bearer(Bearer) ->
 			false
 	end.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec maybe_expired(map()) -> tuple().
 maybe_expired(JWT) ->
 	case maps:get(<<"exp">>, JWT, undefined) of

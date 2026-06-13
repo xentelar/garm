@@ -1,6 +1,6 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Copyright (c) 2025 Xentelar Advanced Technologies. All Rights Reserved.
+%% Copyright (c) 2026 Xentelar Advanced Technologies. All Rights Reserved.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -18,12 +18,10 @@
 %%
 %% -----------------------------------------------------------------------------
 
-%% -----------------------------------------------------------------------------
-%% @doc 
-%% @end
-%% -----------------------------------------------------------------------------
-
 -module(garm_http_request).
+
+-moduledoc """
+""".
 
 -include_lib("kernel/include/logger.hrl").
 
@@ -40,10 +38,8 @@
 -export([get_header_value/2]).
 -export([get_params_values/2]).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec get_header_value(any(), cowboy_req:req()) ->
   {any(), cowboy_req:req()} | {error, any(), cowboy_req:req()}.
 get_header_value(Name, Req) ->
@@ -51,10 +47,8 @@ get_header_value(Name, Req) ->
   Name0 = garm_utils:to_header(Name),
   maps:get(Name0, Headers, undefined).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec get_body_from_req(map(), map(), cowboy_req:req()) -> map().
 get_body_from_req(MethodCfg, ParamValues, Req) ->
   case maps:get(<<"requestBody">>, MethodCfg, no_request_body) of
@@ -65,10 +59,8 @@ get_body_from_req(MethodCfg, ParamValues, Req) ->
       get_body_content(ParamValues, Req)
   end.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec get_params_values(map(), cowboy_req:req()) -> map().
 get_params_values(MethodCfg, Req) ->
   case maps:get(<<"parameters">>, MethodCfg, no_params) of
@@ -96,10 +88,8 @@ get_params_values(MethodCfg, Req) ->
 %% private functions
 %% =============================================================================
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec get_header_param(binary(), map(), map(), term()) -> map().
 get_header_param(ParamName, Values, ParamCfg, Req) ->
   Hs = maps:get(<<"headers">>, Values),
@@ -107,10 +97,8 @@ get_header_param(ParamName, Values, ParamCfg, Req) ->
   Headers = Hs#{ParamName => get_value(ParamCfg, Value)},
   Values#{<<"headers">> => Headers}.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec get_binding_param(binary(), map(), map(), term()) -> map().
 get_binding_param(ParamName, Values, ParamCfg, Req) ->
   Bs = maps:get(<<"bindings">>, Values),
@@ -118,10 +106,8 @@ get_binding_param(ParamName, Values, ParamCfg, Req) ->
   Bindings = Bs#{ParamName => get_value(ParamCfg, Value)},
   Values#{<<"bindings">> => Bindings}.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec get_query_param(binary(), map(), map(), term()) -> map().
 get_query_param(QueryName, Values, ParamCfg, Req) ->
   QVs = maps:get(<<"query-values">>, Values),
@@ -129,10 +115,8 @@ get_query_param(QueryName, Values, ParamCfg, Req) ->
   QueryValues = QVs#{QueryName => get_value(ParamCfg, Value)},
   Values#{<<"query-values">> => QueryValues}.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec get_body_content(map(), term()) -> map().
 get_body_content(ParamValues, Req) ->
   case get_body(Req) of
@@ -143,10 +127,8 @@ get_body_content(ParamValues, Req) ->
       ParamValues#{<<"body">> => Body0}
   end.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec get_body(cowboy_req:req()) ->
   {any(), cowboy_req:req()} | {error, any(), cowboy_req:req()}.
 get_body(Req0) ->
@@ -163,10 +145,8 @@ get_body(Req0) ->
       Value
   end.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec get_query_value(any(), cowboy_req:req()) ->
   {any(), cowboy_req:req()} | {error, any(), cowboy_req:req()}.
 get_query_value(Name, Req) ->
@@ -174,20 +154,16 @@ get_query_value(Name, Req) ->
   Value = garm_utils:get_opt(garm_utils:to_qs(Name), QS),
   {Value, Req}.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec get_binding_value(any(), cowboy_req:req()) ->
   {any(), cowboy_req:req()} | {error, any(), cowboy_req:req()}.
 get_binding_value(Name, Req) ->
   Name0 = garm_utils:to_binding(Name),
   cowboy_req:binding(Name0, Req, undefined).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 prepare_body(Body) ->
   ?LOG_DEBUG(#{description => "Body to process",
               body => Body}),
@@ -203,10 +179,8 @@ prepare_body(Body) ->
       end
   end.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec get_value(map(), binary()) -> number() | binary() | atom().
 get_value(ParamCfg, Value) ->
   #{

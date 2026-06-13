@@ -1,6 +1,6 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Copyright (c) 2025 Xentelar Advanced Technologies. All Rights Reserved.
+%% Copyright (c) 2026 Xentelar Advanced Technologies. All Rights Reserved.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -18,12 +18,10 @@
 %%
 %% -----------------------------------------------------------------------------
 
-%% -----------------------------------------------------------------------------
-%% @doc 
-%% @end
-%% -----------------------------------------------------------------------------
-
 -module(garm_cowboy_config).
+
+-moduledoc """
+""".
 
 -include_lib("kernel/include/logger.hrl").
 
@@ -44,10 +42,8 @@
 
 -export([get_api_paths/2]).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec get_api_paths({binary(), binary()}, map()) ->  protocol().
 get_api_paths({Path, DomainKey}, DomainCfg) ->
   
@@ -65,10 +61,8 @@ get_api_paths({Path, DomainKey}, DomainCfg) ->
     }
   ].
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec build_router_conf(binary(), atom(), map(), atom(), atom(), atom(), atom()) -> tuple().
 build_router_conf(ApiPath, Handler, MethodsCfg, ValidBody, AuthControl, Adapter, ValidResponse) ->
   ApiPath0 = binary:replace(ApiPath, <<"}">>, <<"">>, [global]),
@@ -79,10 +73,8 @@ build_router_conf(ApiPath, Handler, MethodsCfg, ValidBody, AuthControl, Adapter,
               state => {MethodsCfg, ValidBody, AuthControl, Adapter, ValidResponse}}),
   {ApiPath1, Handler, {MethodsCfg, ValidBody, AuthControl, Adapter, ValidResponse}}.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec build_paths(binary()) -> list().
 build_paths({Path, DomainKey}) ->
   {ApiPathsCfg, ComponentsCgf} = garm_config:domain_api(Path, DomainKey),
@@ -96,10 +88,8 @@ build_paths({Path, DomainKey}) ->
 
   maps:fold(F, [], ApiPathsCfg).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec build_methods_cfg(map(), map()) -> map().
 build_methods_cfg(MethodsCfg, ComponentsCgf) ->
   F = fun(Method, Cfg, Acc) ->
@@ -143,10 +133,8 @@ build_methods_cfg(MethodsCfg, ComponentsCgf) ->
 
   maps:fold(F, #{}, MethodsCfg).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec find_contents(map(), map()) -> map().
 find_contents(Contents, ComponentsCgf) ->
   F = fun(ContentType, Cfg, Acc) ->
@@ -161,10 +149,8 @@ find_contents(Contents, ComponentsCgf) ->
 
   maps:fold(F, #{}, Contents).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec application_json(map(), map(), map(), binary()) -> map().
 application_json(Acc, Cfg, ComponentsCgf, ContentType) ->
   #{<<"schema">> := 
@@ -180,10 +166,8 @@ application_json(Acc, Cfg, ComponentsCgf, ContentType) ->
   ObjectDef = maps:get(Object, Schemas, #{}),
   Acc#{ContentType => ObjectDef}.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec text_plain(map(), binary()) -> map().
 text_plain(Acc, ContentType) ->
   ObjectDef = #{<<"type">> => <<"string">>},

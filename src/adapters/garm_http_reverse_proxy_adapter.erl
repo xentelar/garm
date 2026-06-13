@@ -1,6 +1,6 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Copyright (c) 2025 Xentelar Advanced Technologies. All Rights Reserved.
+%% Copyright (c) 2026 Xentelar Advanced Technologies. All Rights Reserved.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -18,12 +18,10 @@
 %%
 %% -----------------------------------------------------------------------------
 
-%% -----------------------------------------------------------------------------
-%% @doc 
-%% @end
-%% -----------------------------------------------------------------------------
-
 -module(garm_http_reverse_proxy_adapter).
+
+-moduledoc """
+""".
 
 -include_lib("kernel/include/logger.hrl").
 
@@ -34,10 +32,8 @@
 -export([start/2]).
 -export([process/3]).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec start(binary(), map()) -> term().
 start(DomainKey, OperationsCfg) ->
 
@@ -57,11 +53,8 @@ start(DomainKey, OperationsCfg) ->
 
 	maps:foreach(F, OperationsCfg).
 
-
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec process(binary(), binary(), map()) -> tuple().
 process(DomainKey, OperationID, Populated) ->
 
@@ -80,26 +73,23 @@ process(DomainKey, OperationID, Populated) ->
 
 	case call(OperationID, Headers, Bindings, Body, OpCfg) of
 		{ok, Status, RespHeaders} ->
-			garm_http_response:ok(Status, RespHeaders);
+			garm_http_response:build(Status, RespHeaders);
 
 		{ok, Status, RespHeaders, ResBody} ->
-			garm_http_response:ok(Status, RespHeaders, ResBody);
+			garm_http_response:build(Status, RespHeaders, ResBody);
 
-		{error, Error} ->
-			garm_http_response:ko(Error)
+		{error, Error, ErrorRespHeaders} ->
+			garm_http_response:build(Error, ErrorRespHeaders)
 	end.
 
 %% =============================================================================
 %% private functions
 %% =============================================================================
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec call(binary(), map(), map(), map(), map()) -> term().
 call(OperationID, Headers, Bindings, Body, OpCfg) -> 
-
 	Headers0 = maps:to_list(Headers),
 	Payload = thoas:encode(Body),
 	{Method, Url} = build_url(OpCfg),
@@ -108,6 +98,7 @@ call(OperationID, Headers, Bindings, Body, OpCfg) ->
 				K0 = list_to_binary([<<"{">>, K, <<"}">>]),
 				binary:replace(Url0, K0, garm_utils:to_binary(V))
 		end,
+
 	Url1 = maps:fold(F, Url, Bindings),
 
 	Options = [{pool, OperationID}],
@@ -129,36 +120,36 @@ call(OperationID, Headers, Bindings, Body, OpCfg) ->
 								body => ResBody}),
 					{ok, Status, RespHeaders0, ResBody};
 
-				ok ->
-					?LOG_DEBUG(#{description => "Response from host",
-								status => Status, headers => RespHeaders,
-								body => no_body}),
-					{ok, Status, RespHeaders0};
-
-				done ->
-					?LOG_DEBUG(#{description => "Response from host",
-								status => Status, headers => RespHeaders,
-								body => no_body}),
-					{ok, Status, RespHeaders0};
+				{error, {closed, Error0}} ->
+					?LOG_ERROR(#{description => "The host shut down the response",
+								status => Status, headers => RespHeaders, 
+								error => Error0}),
+					{error, Error0, RespHeaders0};
 
 				{error, Error0} ->
 					?LOG_ERROR(#{description => "Error while reading body response from host",
 								status => Status, headers => RespHeaders, 
 								error => Error0}),
-					{error, Error0}
+					{error, Error0, RespHeaders0}
 			end;
 
-		Error ->
+		{ok, Status, RespHeaders} ->
+			F0 = fun({K, V}, Acc) -> Acc#{K => V} end,
+			RespHeaders0 = lists:foldl(F0, #{}, RespHeaders),
+			?LOG_DEBUG(#{description => "Response from host",
+						status => Status, headers => RespHeaders,
+						body => no_body}),
+			{ok, Status, RespHeaders0};
+
+		{error, Reason} ->
 			?LOG_ERROR(#{description => "Call error",
-								error => Error}),
-      {error, Error}
+								reason => Reason}),
+      {error, Reason, #{}}
 
 	end.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec build_url(map()) -> {binary(), binary()}.
 build_url(OpCfg) ->
 	#{

@@ -1,6 +1,6 @@
 %% -----------------------------------------------------------------------------
 %%
-%% Copyright (c) 2025 Xentelar Advanced Technologies. All Rights Reserved.
+%% Copyright (c) 2026 Xentelar Advanced Technologies. All Rights Reserved.
 %%
 %% This file is provided to you under the Apache License,
 %% Version 2.0 (the "License"); you may not use this file
@@ -18,12 +18,10 @@
 %%
 %% -----------------------------------------------------------------------------
 
-%% -----------------------------------------------------------------------------
-%% @doc 
-%% @end
-%% -----------------------------------------------------------------------------
-
 -module(garm_server).
+
+-moduledoc """
+""".
 
 -include_lib("kernel/include/logger.hrl").
 
@@ -31,27 +29,34 @@
 %% public functions
 %% =============================================================================
 
--export([start/0]).
+-export([init/0]).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec start() -> {ok, pid()} | {error, any()}.
-start() ->
-  start_certs(),
-  start_domains().
+-doc """
+""".
+-spec init() -> ok.
+init() ->
+	try
+
+	  init_cfg(),
+    init_domains(),
+    ?LOG_NOTICE(#{description => "config was loaded"})
+
+	catch
+		error:Exception:Stacktrace ->
+			?LOG_ERROR(#{description => "config have problems",
+									exception => Exception,
+									stacktrace => Stacktrace})
+	end,
+  ok.
 
 %% =============================================================================
 %% private functions
 %% =============================================================================
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec start_domains() -> {ok, pid()} | {error, any()}.
-start_domains() ->
+-doc """
+""".
+-spec init_domains() -> ok.
+init_domains() ->
   NetOpts = [],
   IP = {0,0,0,0},
 
@@ -78,34 +83,29 @@ start_domains() ->
 
   maps:foreach(F, Domains).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
--spec start_certs() -> term().
-start_certs() ->
+-doc """
+""".
+-spec init_cfg() -> term().
+init_cfg() ->
 
   Path = garm_config:config_path(),
 
   Files = garm_config:list_files(Path, <<".pem">>),
 
   ?LOG_NOTICE(#{description => "load certs", crets => Files}),
+  
+  ets:new(certificates, [public, named_table, {read_concurrency, true}]),
 
   F = fun(CertPath) ->
-    %PivatePath = code:priv_dir(garm),
-    %CertPath = list_to_binary([PivatePath, <<"/">>, <<"propelauth-key.pem">>]),
     JWK = jose_jwk:from_pem_file(binary_to_list(CertPath)),
     ?LOG_NOTICE(#{description => "load JWK", jwk => JWK}),
-    ets:new(certificates, [public, named_table, {read_concurrency, true}]),
     ets:insert(certificates, {jwk, JWK})
   end,
 
   lists:foreach(F, Files).
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec load_domain_cfg(binary(), map(), binary()) -> term().
 load_domain_cfg(DomainKey, DomainCfg, Path) ->
   case maps:get(<<"cfg">>, DomainCfg, cfg_undefined) of
@@ -121,27 +121,21 @@ load_domain_cfg(DomainKey, DomainCfg, Path) ->
       OperationsCfg
   end.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec api_config({binary(), binary()}, map()) -> map().
 api_config({Path, DomainKey}, DomainCfg) ->
   #{env => default_dispatch({Path, DomainKey}, DomainCfg)}.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec default_dispatch({binary(), binary()}, map()) -> map().
 default_dispatch({Path, DomainKey}, DomainCfg) ->
   ApiPaths = garm_cowboy_config:get_api_paths({Path, DomainKey}, DomainCfg),
   #{dispatch => cowboy_router:compile(ApiPaths)}.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec socket_transport(inet:ip_address(), inet:port_number(), list()) -> tuple().
 socket_transport(IP, Port, NetOpts) ->
   Opts = [
@@ -156,10 +150,8 @@ socket_transport(IP, Port, NetOpts) ->
       {tcp, Opts}
   end.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec start_adapter(binary(), map(), map()) -> term().
 start_adapter(DomainKey, DomainCfg, OperationsCfg) ->
   case maps:get(<<"adapter">>, DomainCfg, adapter_undefined) of
@@ -190,10 +182,8 @@ start_adapter(DomainKey, DomainCfg, OperationsCfg) ->
       end
   end.
 
-%% -----------------------------------------------------------------------------
-%% @doc
-%% @end
-%% -----------------------------------------------------------------------------
+-doc """
+""".
 -spec call(atom(), atom(), binary(), map()) -> term() | atom() | tuple().
 call(Handler, Callback, DomainKey, Populated) ->
   try 
