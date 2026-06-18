@@ -25,6 +25,8 @@
 
 -include_lib("kernel/include/logger.hrl").
 
+-include("http_commons.hrl").
+
 -define(DEFAULT_VALUES, #{<<"headers">> => #{},
                         <<"headers-ext">> => #{}, 
                         <<"bindings">> => #{}, 
@@ -34,7 +36,7 @@
 %% public functions
 %% =============================================================================
 
--export([get_body_from_req/3]).
+-export([get_body_from_req/5]).
 -export([get_header_value/2]).
 -export([get_params_values/2]).
 
@@ -49,14 +51,18 @@ get_header_value(Name, Req) ->
 
 -doc """
 """.
--spec get_body_from_req(map(), map(), cowboy_req:req()) -> map().
-get_body_from_req(MethodCfg, ParamValues, Req) ->
-  case maps:get(<<"requestBody">>, MethodCfg, no_request_body) of
+-spec get_body_from_req(map(), map(), cowboy_req:req(), map(), binary()) -> map().
+get_body_from_req(MethodCfg, ParamValues, Req, ValidBody, ContentType) ->
+  case maps:get(~"requestBody", MethodCfg, no_request_body) of
     no_request_body ->
-      ParamValues#{<<"body">> => #{}};
+      ParamValues#{~"body" => #{}};
     
     _RequestBody ->
-      get_body_content(ParamValues, Req)
+      %get_body_content(ParamValues, Req),
+      case apply_content_type(MethodCfg, Req, ContentType, ValidBody) of
+        {ok, Body} -> {ok, ParamValues#{<<"body">> => Body}};
+        Error -> Error
+      end
   end.
 
 -doc """
@@ -117,32 +123,14 @@ get_query_param(QueryName, Values, ParamCfg, Req) ->
 
 -doc """
 """.
--spec get_body_content(map(), term()) -> map().
-get_body_content(ParamValues, Req) ->
-  case get_body(Req) of
-    {error, Reason} ->
-      {error, Reason};
-
-    Body0 ->
-      ParamValues#{<<"body">> => Body0}
-  end.
-
--doc """
-""".
 -spec get_body(cowboy_req:req()) ->
   {any(), cowboy_req:req()} | {error, any(), cowboy_req:req()}.
 get_body(Req0) ->
-  {ok, Body, _Req} = cowboy_req:read_body(Req0),
-  case prepare_body(Body) of
-    {error, Reason} ->
-      ?LOG_ERROR(#{description => "The body could not be processed",
-                  reason => Reason}),
-      {error, Reason};
-
-    Value ->
-      ?LOG_DEBUG(#{description => "Json result",
-                  json => Value}),
-      Value
+  case cowboy_req:read_body(Req0) of
+    {ok, Body, _Req} ->
+      Body;
+    {more, Body, _Req} ->
+      Body
   end.
 
 -doc """
@@ -164,23 +152,6 @@ get_binding_value(Name, Req) ->
 
 -doc """
 """.
-prepare_body(Body) ->
-  ?LOG_DEBUG(#{description => "Body to process",
-              body => Body}),
-  case Body of
-    <<"">> -> #{};
-    _ ->
-      try
-        {ok, JsonMap} = thoas:decode(Body),
-        JsonMap
-      catch
-        error:_ ->
-        {error, {invalid_body, not_json, Body}}
-      end
-  end.
-
--doc """
-""".
 -spec get_value(map(), binary()) -> number() | binary() | atom().
 get_value(ParamCfg, Value) ->
   #{
@@ -195,4 +166,36 @@ get_value(ParamCfg, Value) ->
     <<"string">> -> Value;
     <<"boolean">> -> binary_to_atom(Value);
     <<"array">> -> Value
+  end.
+
+-spec apply_content_type(map(), cowboy_req:req(), binary(), map()) -> 
+    binary() | map() | {error, non_neg_integer(), term()}.
+apply_content_type(MethodCfg, Req, ContentType, ValidBody) ->
+  Body = get_body(Req),
+  case maps:get(ContentType, ValidBody, undefined) of
+    undefined -> 
+      {error, ~"validator adapter not found"};
+    Adapter -> 
+      case maps:get(~"requestBody", MethodCfg, undefined) of
+        undefined ->
+          {error, no_request_body};
+        RequestBody ->
+          case maps:get(~"content", RequestBody, undefined) of
+            undefined ->
+              {error, no_request_body_content};
+            ContentTypes ->
+              case maps:get(ContentType, ContentTypes, undefined) of
+                undefined ->
+                  {error, request_body_config};
+                Schema ->
+                  Required = maps:get(~"required", RequestBody, false),
+                  case garm_validator:validate(Adapter, Body, Schema, Required) of
+                    {ok, BodyJson} ->
+                      {ok, BodyJson};
+                    {error, Reason} ->
+                      {error, ?BAD_REQUEST_HTTP_CODE, Reason}
+                  end
+              end
+          end
+      end
   end.

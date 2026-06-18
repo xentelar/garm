@@ -18,46 +18,36 @@
 %%
 %% -----------------------------------------------------------------------------
 
--module(garm_http_response).
+-module(garm_validator).
 
 -moduledoc """
 """.
 
--include("http_commons.hrl").
+-include_lib("kernel/include/logger.hrl").
 
 %% =============================================================================
-%% public functions
+%% public definitions
 %% =============================================================================
 
--export([build/2]).
--export([build/3]).
+-export([validate/4]).
 
 -doc """
 """.
--spec build(non_neg_integer(), map()) -> tuple().
-build(Status, Headers) ->
-	%Body = status_description(Status),
-	msg(Status, Headers).
+-callback validate(Value :: binary() | map(), ValidatorSchema :: term(), 
+                  Required :: true | false) -> {ok, binary() | map()} | {error, term()}.
 
--doc """
-""".
--spec build(non_neg_integer(), map(), binary()) -> tuple().
-build(Status, Headers, Body) ->
-	msg(Status, Headers, Body).
+-spec validate(atom(), binary() | map(), term(), true | false) -> {ok, binary() | map()} | {error, term()}.
+validate(Handler, Value, ValidatorSchema, Required) ->
+  try 
+
+    erlang:apply(Handler, validate, [Value, ValidatorSchema, Required])
+
+  catch _Class:Reason:_Stacktrace ->
+    ?LOG_ERROR(#{description => "Validator not found or not loaded", 
+          handler => Handler, callback => validate, reason => Reason}),
+    {error, Reason}
+  end.
 
 %% =============================================================================
 %% private functions
 %% =============================================================================
-
--doc """
-""".
--spec msg(non_neg_integer(), map(), binary()) -> {non_neg_integer(), map(), map() | binary()}.
-msg(Status, Headers, Body) ->
-	{Status, Headers, Body}.
-
--doc """
-""".
--spec msg(non_neg_integer(), map()) -> {non_neg_integer(), map()}.
-msg(Status, Headers) ->
-	{Status, Headers}.
-

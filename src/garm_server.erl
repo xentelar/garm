@@ -160,36 +160,22 @@ start_adapter(DomainKey, DomainCfg, OperationsCfg) ->
                     domain_key => DomainKey});
     Adapter ->
       try 
-        case call(Adapter, start, DomainKey, OperationsCfg) of
-          no_call ->
-            ?LOG_ERROR(#{description => "start callback not found", 
-                      adapter => Adapter, callback => start, 
-                      args => [DomainKey, OperationsCfg],
-                      domain_key => DomainKey});
+        case garm_adapter:init(Adapter, DomainKey, OperationsCfg) of
+          {error, Reason} ->
+            ?LOG_ERROR(#{description => "init adapter error",
+              reason => Reason, adapter => Adapter, callback => start, 
+              args => [DomainKey, OperationsCfg], domain_key => DomainKey});
 
           _ ->
-            ?LOG_DEBUG(#{description => "start callback was executed", 
-                      adapter => Adapter, callback => start, 
-                      args => [DomainKey, OperationsCfg],
-                      domain_key => DomainKey})
+            ?LOG_DEBUG(#{description => "init adapter was executed", 
+              adapter => Adapter, callback => start, 
+              args => [DomainKey, OperationsCfg], domain_key => DomainKey})
         end
       catch
-        Class:Exception:Stacktrace ->
-          ?LOG_ERROR(#{description => "general error in start callback", 
-                      adapter => Adapter, callback => start, error_class => Class,
-                      args => [DomainKey, OperationsCfg], msg => Exception, 
-                      stacktrace => Stacktrace, domain_key => DomainKey})
+        _Class:Exception:Stacktrace ->
+          ?LOG_ERROR(#{description => "general error in init adapter", 
+            reason => Exception, adapter => Adapter, callback => start,
+            args => [DomainKey, OperationsCfg], domain_key => DomainKey, 
+            stacktrace => Stacktrace})
       end
-  end.
-
--doc """
-""".
--spec call(atom(), atom(), binary(), map()) -> term() | atom() | tuple().
-call(Handler, Callback, DomainKey, Populated) ->
-  try 
-    Handler:Callback(DomainKey, Populated)
-  catch Class:Reason:_Stacktrace ->
-    ?LOG_ERROR(#{description => "Handler is not loaded", 
-          handler => Handler, error => {Class, Reason}}),
-    no_call
   end.

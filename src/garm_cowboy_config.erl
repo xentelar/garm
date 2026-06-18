@@ -49,8 +49,8 @@ get_api_paths({Path, DomainKey}, DomainCfg) ->
   
   Handler = maps:get(<<"handler">>, DomainCfg, handler_undefined),
   ValidBody = maps:get(<<"validBody">>, DomainCfg, valid_body_undefined),
-  ValidResponse = maps:get(<<"validResponse">>, DomainCfg, valid_response_undefined),
-  AuthControl = maps:get(<<"authControl">>, DomainCfg, auth_control_undefined),
+  ValidResponse = maps:get(<<"validResponse">>, DomainCfg, valid_rps_undefined),
+  AuthControl = maps:get(<<"authControl">>, DomainCfg, auth_ctrl_undefined),
   Adapter = maps:get(<<"adapter">>, DomainCfg, adapter_undefined),
   
   Paths = build_paths({Path, DomainKey}),
@@ -93,41 +93,29 @@ build_paths({Path, DomainKey}) ->
 -spec build_methods_cfg(map(), map()) -> map().
 build_methods_cfg(MethodsCfg, ComponentsCgf) ->
   F = fun(Method, Cfg, Acc) ->
-        case maps:find(<<"requestBody">>, Cfg) of
-          {ok, RequestBodyData} ->
-            case maps:find(<<"$ref">>, RequestBodyData) of
-              {ok, Ref} ->
-                [<<"#">>, 
-                  <<"components">>, 
-                  <<"requestBodies">>, 
-                  RequestBodie] = binary:split(Ref, <<"/">>, [global]),
-                
-                RequestBodies = maps:get(<<"requestBodies">>, ComponentsCgf, #{}),
-                ObjectDef = maps:get(RequestBodie, RequestBodies, #{}),
+        case maps:get(~"requestBody", Cfg, undefined) of
+          undefined ->
+            Acc#{Method => Cfg};
 
-                Contents = maps:get(<<"content">>, ObjectDef, #{}),
-
-                ?LOG_DEBUG(#{description => "Method Config", 
-                      method => Method,
-                      object_def => ObjectDef,
-                      contents => Contents}),
-
-                Contents0 = find_contents(Contents, ComponentsCgf),
-                ?LOG_DEBUG(#{description => "Method Config", 
-                      method => Method,
-                      cfg => Cfg#{<<"requestBody">> => 
-                                    ObjectDef#{<<"content">> => Contents0}
-                              }}),
-                
-                Acc#{Method => Cfg#{<<"requestBody">> => 
-                                    ObjectDef#{<<"content">> => Contents0}
-                              }};
-              error ->
-                Acc#{Method => Cfg}
-            end;
-
-          error ->
-            Acc#{Method => Cfg}
+          RequestBody ->
+            RequestBody0 = find_content_types(RequestBody, ComponentsCgf),
+            ContentTypes = maps:get(~"content", RequestBody0),
+            
+            RequestBody1 = 
+            case maps:get(~"application/json", ContentTypes, undefined) of
+              undefined ->
+                RequestBody0;
+              Schema ->
+                C = #{~"components" => ComponentsCgf},
+                JesseState = jesse_state:new(C, [{default_schema_ver, <<"http://json-schema.org/draft-04/schema#">>}]),
+                CTs = ContentTypes#{~"application/json" => {Schema, JesseState}},
+                RequestBody0#{~"content" => CTs}
+            end,
+            Cfg0 = Cfg#{~"requestBody" => RequestBody1},
+            ?LOG_DEBUG(#{description => "Method Config", 
+                  method => Method,
+                  config => Cfg0}),
+            Acc#{Method => Cfg0}
         end
     end,
 
@@ -135,40 +123,27 @@ build_methods_cfg(MethodsCfg, ComponentsCgf) ->
 
 -doc """
 """.
--spec find_contents(map(), map()) -> map().
-find_contents(Contents, ComponentsCgf) ->
-  F = fun(ContentType, Cfg, Acc) ->
-        case ContentType of
-          <<"application/json">> ->
-            application_json(Acc, Cfg, ComponentsCgf, ContentType);
-
-          <<"text/plain">> ->
-            text_plain(Acc, ContentType)
-        end
-    end,
-
-  maps:fold(F, #{}, Contents).
-
--doc """
-""".
--spec application_json(map(), map(), map(), binary()) -> map().
-application_json(Acc, Cfg, ComponentsCgf, ContentType) ->
-  #{<<"schema">> := 
-      #{<<"$ref">> := Ref}
-    } = Cfg,
-
-  [<<"#">>, 
-    <<"components">>, 
-    <<"schemas">>, 
-    Object] = binary:split(Ref, <<"/">>, [global]),
-      
-  Schemas = maps:get(<<"schemas">>, ComponentsCgf, #{}),
-  ObjectDef = maps:get(Object, Schemas, #{}),
-  Acc#{ContentType => ObjectDef}.
-
--doc """
-""".
--spec text_plain(map(), binary()) -> map().
-text_plain(Acc, ContentType) ->
-  ObjectDef = #{<<"type">> => <<"string">>},
-  Acc#{ContentType => ObjectDef}.
+-spec find_content_types(map(), map()) -> map().
+find_content_types(RequestBody, ComponentsCgf) ->
+  case maps:get(~"$ref", RequestBody, undefined) of
+    undefined ->
+      case maps:get(~"content", RequestBody, undefined) of
+        undefined ->
+          error(no_content_or_ref);
+        _ContentTypes ->
+          RequestBody
+      end;
+    Ref ->
+      [<<"#">>, 
+      <<"components">>, 
+      <<"requestBodies">>, 
+      RequestBodySchema] = binary:split(Ref, <<"/">>, [global]),
+      RequestBodySchemas = maps:get(<<"requestBodies">>, ComponentsCgf, #{}),
+      SchemaDef = maps:get(RequestBodySchema, RequestBodySchemas, #{}),
+      case maps:get(~"content", SchemaDef, undefined) of
+        undefined ->
+          error(no_content_or_ref);
+        _ContentTypes ->
+          SchemaDef
+      end
+  end.

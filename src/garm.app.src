@@ -19,7 +19,8 @@
     cowboy,
     jose,
     cache,
-    hackney
+    hackney,
+    jesse
    ]},
   {env,[]},
   {modules, []},

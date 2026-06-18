@@ -23,9 +23,19 @@
 -moduledoc """
 """.
 
+-type response() :: {Status :: non_neg_integer(), Headers :: map()} 
+  | {Status :: non_neg_integer(), Headers :: map(), Body :: binary() | map()}
+  | {error, term()}.
+-export_type([response/0]).
+
+-include_lib("kernel/include/logger.hrl").
+
 %% =============================================================================
 %% public definitions
 %% =============================================================================
+
+-export([init/3]).
+-export([process/4]).
 
 -doc """
 Initialize the adapter.
@@ -33,12 +43,42 @@ Initialize the adapter.
 When a `cowboy` process is started this function is called
 by the new process to initialize internal parameters.
 """.
--callback start(DomainKey :: binary(), OperationsCfg :: map()) -> term().
+-callback start(DomainKey :: binary(), OperationsCfg :: map()) -> term() | {error, term()}.
 
 -doc """
 Handle the http calls.
 """.
--callback process(DomainKey :: binary(), OperationID :: binary(), Populated :: map()) -> tuple().
+-callback process(DomainKey :: binary(), OperationID :: binary(), Populated :: map()) -> response().
+
+-doc """
+""".
+-spec init(atom(), binary(), map()) -> term() | {error, term()}.
+init(Handler, DomainKey, Populated) ->
+  try 
+
+    erlang:apply(Handler, start, [DomainKey, Populated])
+
+  catch _Class:Reason:Stacktrace ->
+    ?LOG_ERROR(#{description => "adapter errors", 
+        reason => Reason, handler => Handler, callback => start,
+        stacktrace => Stacktrace}),
+    {error, Reason}
+  end.
+
+-doc """
+""".
+-spec process(atom(), binary(), binary(), map()) -> response().
+process(Adapter, DomainKey, OperationID, Populated) ->
+  try 
+
+    erlang:apply(Adapter, process, [DomainKey, OperationID, Populated])
+    
+  catch _Class:Reason:Stacktrace ->
+    ?LOG_ERROR(#{description => "adapter errors", 
+          reason => Reason, adapter => Adapter, callback => process,
+          stacktrace => Stacktrace}),
+    {error, Reason}
+  end.
 
 %% =============================================================================
 %% private functions

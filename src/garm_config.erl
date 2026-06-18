@@ -47,20 +47,18 @@ domains() ->
 	case filelib:is_file(CfgFile) of
 		true ->
 			Path = filename:dirname(CfgFile),
-			[Config] = yamerl_constr:file(CfgFile),
+			[Config] = yamerl_constr:file(CfgFile, [str_node_as_binary]),
 
 			?LOG_DEBUG(#{description => "domains conf", 
 									domains => Config}),
 
-			case lists:keyfind("domains", 1, Config) of
+			case lists:keyfind(~"domains", 1, Config) of
 				{_, Domains} ->
 					Domains0 = create_map(Domains),
-
-					?LOG_DEBUG(#{description => "Domains config was loaded",
+					?LOG_INFO(#{description => "Domains config was loaded",
 											domains_cfg => Domains0}),
-
 					{Path, Domains0};
-
+				
 				false ->
 					error(config_domains_not_found)
 			end;
@@ -94,45 +92,35 @@ domain_api(Path, FileName) ->
 	FileName0 = list_to_binary([Path, <<"/">>, FileName, <<".yaml">>]),
 	case filelib:is_file(FileName0) of
 		true ->
-			[Config] = yamerl_constr:file(FileName0),
+			[Config] = yamerl_constr:file(FileName0, [{map_node_format, map}, str_node_as_binary]),
 
 			?LOG_DEBUG(#{description => "full api conf", 
 									full_api_def => Config}),
 			
 			PathsCfg =
-			case lists:keyfind("paths", 1, Config) of
-				{_, Paths} ->
-					Paths0 = create_map(Paths),
-					?LOG_DEBUG(#{description => "API paths config was loaded",
-											paths_cfg => Paths0}),
-					%G = fun(K, V) ->
-					%			set(binary_to_atom(K), V)
-					%end,
-					%maps:foreach(G, Paths0);
-					Paths0;
-
-				false ->
+			case maps:get(~"paths", Config, undefined) of
+				undefined ->
 					?LOG_ERROR(#{description => "Not found 'paths' in file",
 											file => FileName0}),
-					error(paths_config_not_found)
+					error(paths_config_not_found);
+
+				Paths ->
+					?LOG_DEBUG(#{description => "API paths config was loaded",
+											paths_cfg => Paths}),
+					Paths
 			end,
 
 			ComponentsCgf =
-			case lists:keyfind("components", 1, Config) of
-				{_, Components} ->
-					Components0 = create_map(Components),
-					?LOG_DEBUG(#{description => "API components config was loaded",
-											paths_cfg => Components0}),
-					%H = fun(K, V) ->
-					%			set(binary_to_atom(K), V)
-					%end,
-					%maps:foreach(H, Components0);
-					Components0;
-
-				false ->
+			case maps:get(~"components", Config, undefined) of
+				undefined ->
 					?LOG_ERROR(#{description => "Not found 'components' in file",
 												file => FileName0}),
-					error(components_config_not_found)
+					error(components_config_not_found);
+
+				Components ->
+					?LOG_DEBUG(#{description => "API components config was loaded",
+											paths_cfg => Components}),
+					Components
 			end,
 			{PathsCfg, ComponentsCgf};
 
@@ -150,25 +138,21 @@ load_domain_cfg(DomainKey, Path, FileName) ->
 
 	case filelib:is_file(FileName0) of
 		true ->
-			[Config] = yamerl_constr:file(FileName0),
+			[Config] = yamerl_constr:file(FileName0, [{map_node_format, map}, str_node_as_binary]),
 
 			?LOG_DEBUG(#{description => "Domain conf file", 
 									file => FileName0,
 									cfg => Config}),
 
-			case lists:keyfind("operations", 1, Config) of
-				{_, OperationsCfg} ->
-					OperationsCfg0 = create_map(OperationsCfg),
+			case maps:get(~"operations", Config, undefined) of
+				undefined ->
+					error(config_domains_not_found);
 
+				OperationsCfg ->
 					?LOG_DEBUG(#{description => "Operations from domain config was loaded",
-											file => FileName0,
-											operations => OperationsCfg0}),
-
-					set(DomainKey, OperationsCfg0),
-					OperationsCfg0;
-
-				false ->
-					error(config_domains_not_found)
+											file => FileName0,operations => OperationsCfg}),
+					set(DomainKey, OperationsCfg),
+					OperationsCfg
 			end;
 
 		false ->
@@ -182,7 +166,7 @@ find(Key) ->
   application:get_env(?APP, Key).
 
 -doc """
-list the required files on path
+This function list the required files on path
 """.
 -spec list_files(file:name_all(), string()) -> [binary()].
 list_files(Path, ExtentionFile) ->
@@ -219,64 +203,53 @@ create_map(Config) ->
 create_map([], Acc) ->
 	Acc;
 
-% create_map([{"parameters", Values} | T], Acc) ->
-% 	Key0 = <<"parameters">>,
-% 	F = fun(Value) ->
-% 				create_map(Value, #{})
-% 		end,
-% 	Acc0 = Acc#{Key0 => lists:map(F, Values)},
-% 	create_map(T, Acc0);
-
- create_map([{"apiPort", Value} | T], Acc) ->
- 	Key0 = <<"apiPort">>,
+create_map([{Key0 = ~"apiPort", Value} | T], Acc) ->
 	Value0 =
 	case Value of
 		N when is_integer(N) -> N;
 		S when is_list(S) -> 
-			S0 = lists:flatten(string:replace(S, "$(", "")),
-			S1 = lists:flatten(string:replace(S0, ")", "")),
-			list_to_integer(os:getenv(S1))
+			S0 = binary:replace(S, ~"$(", <<>>),
+			S1 = binary:replace(S0, ~")", <<>>),
+			Val = unicode:characters_to_list(S1),
+			list_to_integer(os:getenv(Val))
 	end,
  	Acc0 = Acc#{Key0 => Value0},
  	create_map(T, Acc0);
 
- create_map([{"handler", Value} | T], Acc) ->
- 	Key0 = <<"handler">>,
- 	Acc0 = Acc#{Key0 => list_to_atom(Value)},
+create_map([{Key0 = ~"handler", Value} | T], Acc) ->
+ 	Acc0 = Acc#{Key0 => binary_to_atom(Value)},
  	create_map(T, Acc0);
 
-create_map([{"validBody", Value} | T], Acc) ->
-	Key0 = <<"validBody">>,
-	Acc0 = Acc#{Key0 => list_to_atom(Value)},
+create_map([{Key0 = ~"validBody", Values} | T], Acc) ->
+ 	F = fun({Key, Val}, Aux) ->
+				Validator = binary_to_atom(Val),
+ 				maps:put(Key, Validator, Aux)
+ 		end,
+ 	Acc0 = Acc#{Key0 => lists:foldl(F, #{}, Values)},
 	create_map(T, Acc0);
 
-create_map([{"authControl", Value} | T], Acc) ->
-	Key0 = <<"authControl">>,
-	Acc0 = Acc#{Key0 => list_to_atom(Value)},
+create_map([{Key0 = ~"authControl", Value} | T], Acc) ->
+	Acc0 = Acc#{Key0 => binary_to_atom(Value)},
 	create_map(T, Acc0);
 
-create_map([{"adapter", Value} | T], Acc) ->
-	Key0 = <<"adapter">>,
-	Acc0 = Acc#{Key0 => list_to_atom(Value)},
+create_map([{Key0 = ~"adapter", Value} | T], Acc) ->
+	Acc0 = Acc#{Key0 => binary_to_atom(Value)},
 	create_map(T, Acc0);
 
-create_map([{"validResponse", Value} | T], Acc) ->
-	Key0 = <<"validResponse">>,
-	Acc0 = Acc#{Key0 => list_to_atom(Value)},
+create_map([{Key0 = ~"validResponse", Values} | T], Acc) ->
+ 	F = fun({Key, Val}, Aux) ->
+				Validator = binary_to_atom(Val),
+ 				maps:put(Key, Validator, Aux)
+ 		end,
+ 	Acc0 = Acc#{Key0 => lists:foldl(F, #{}, Values)},
 	create_map(T, Acc0);
-
-create_map([[{Key, Val}] | Tail], Acc) ->
-	Key0 = list_to_binary(Key),
-	?LOG_DEBUG(#{description => "tuple to map",
-								key => Key, val => Val}),
-  create_map(Tail, Acc#{Key0 => create_map(Val, #{})});
 
 create_map([{Key, Val} | Tail], Acc) ->
-	Key0 = list_to_binary(Key),
-	?LOG_DEBUG(#{description => "tuple to map",
-								key => Key, val => Val}),
-  create_map(Tail, Acc#{Key0 => create_map(Val, #{})});
-	
+  create_map(Tail, Acc#{Key => create_map(Val, #{})});
+
+create_map([[{Key, Val}] | Tail], Acc) ->
+  create_map(Tail, Acc#{Key => create_map(Val, #{})});
+
 create_map(Val, _Acc) when is_atom(Val) ->
 	Val;
 
@@ -284,20 +257,9 @@ create_map(Val, _Acc) when is_integer(Val) ->
 	Val;
 
 create_map(Val, _Acc) when is_binary(Val) ->
-	Val;
-
-create_map(Val, _Acc) ->
-	?LOG_DEBUG(#{description => "Val to binary",
-							val => Val}),
-	case io_lib:printable_list(Val) of
-		false ->
-			Val;
-		true ->
-			list_to_binary(Val)
-	end.
+	Val.
 
 -doc """
-filter the required files from other files
 """.
 -spec filter(file:name_all(), [string()], string()) -> [binary()].
 filter(Path, Files, ExtentionFile) ->
