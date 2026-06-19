@@ -521,9 +521,8 @@ reply_response(Response, Req0, State = #state{operation_id = OperationID}) ->
 -doc """
 """.
 -spec content_type(binary()) -> tuple().
-content_type(<<"text/plain">>) ->
-  {<<"text">>,<<"plain">>, '*'};
-content_type(<<"text/html">>) ->
-  {<<"text">>,<<"html">>, '*'};
-content_type(<<"application/json">>) ->
-  {<<"application">>,<<"json">>, '*'}.
+content_type(ContentType) ->
+  case binary:split(ContentType, [<<"/">>], [global]) of
+    [CT] -> {CT, '*'};
+    [CTl, CTh] -> {CTl, CTh, '*'}
+  end.
