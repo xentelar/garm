@@ -39,11 +39,11 @@ init() ->
 
 	  init_cfg(),
     init_domains(),
-    ?LOG_NOTICE(#{description => "config was loaded"})
+    ?LOG_NOTICE(#{description => "Config was loaded"})
 
 	catch
 		error:Exception:Stacktrace ->
-			?LOG_ERROR(#{description => "config have problems",
+			?LOG_ERROR(#{description => "Config have problems",
 									exception => Exception,
 									stacktrace => Stacktrace})
 	end,
@@ -92,13 +92,13 @@ init_cfg() ->
 
   Files = garm_config:list_files(Path, <<".pem">>),
 
-  ?LOG_NOTICE(#{description => "load certs", crets => Files}),
+  ?LOG_NOTICE(#{description => "Load certs", crets => Files}),
   
   ets:new(certificates, [public, named_table, {read_concurrency, true}]),
 
   F = fun(CertPath) ->
     JWK = jose_jwk:from_pem_file(binary_to_list(CertPath)),
-    ?LOG_NOTICE(#{description => "load JWK", jwk => JWK}),
+    ?LOG_NOTICE(#{description => "Load JWK", jwk => JWK}),
     ets:insert(certificates, {jwk, JWK})
   end,
 
@@ -162,18 +162,18 @@ start_adapter(DomainKey, DomainCfg, OperationsCfg) ->
       try 
         case garm_adapter:init(Adapter, DomainKey, OperationsCfg) of
           {error, Reason} ->
-            ?LOG_ERROR(#{description => "init adapter error",
+            ?LOG_ERROR(#{description => "Init adapter error",
               reason => Reason, adapter => Adapter, callback => start, 
               args => [DomainKey, OperationsCfg], domain_key => DomainKey});
 
           _ ->
-            ?LOG_DEBUG(#{description => "init adapter was executed", 
+            ?LOG_DEBUG(#{description => "Init adapter was executed", 
               adapter => Adapter, callback => start, 
               args => [DomainKey, OperationsCfg], domain_key => DomainKey})
         end
       catch
         _Class:Exception:Stacktrace ->
-          ?LOG_ERROR(#{description => "general error in init adapter", 
+          ?LOG_ERROR(#{description => "General error in init adapter", 
             reason => Exception, adapter => Adapter, callback => start,
             args => [DomainKey, OperationsCfg], domain_key => DomainKey, 
             stacktrace => Stacktrace})

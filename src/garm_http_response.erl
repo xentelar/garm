@@ -23,7 +23,10 @@
 -moduledoc """
 """.
 
+-include_lib("kernel/include/logger.hrl").
+
 -include("http_commons.hrl").
+-include("garm.hrl").
 
 %% =============================================================================
 %% public functions
@@ -31,19 +34,89 @@
 
 -export([build/2]).
 -export([build/3]).
+-export([resp_headers/2]).
+-export([prepare_response/3]).
 
 -doc """
 """.
--spec build(non_neg_integer(), map()) -> tuple().
+-spec build(pos_integer(), map()) -> tuple().
 build(Status, Headers) ->
-	%Body = status_description(Status),
 	msg(Status, Headers).
 
 -doc """
 """.
--spec build(non_neg_integer(), map(), binary()) -> tuple().
+-spec build(pos_integer(), map(), binary()) -> tuple().
 build(Status, Headers, Body) ->
 	msg(Status, Headers, Body).
+
+-doc """
+""".
+-spec resp_headers(term(), binary()) -> term().
+resp_headers(Req, Origin) ->
+  cowboy_req:set_resp_headers(#{
+		<<"Access-Control-Allow-Origin">> => Origin
+	}, Req).
+
+-doc """
+""".
+-spec prepare_response(tuple(), map(), atom()) -> binary().
+prepare_response({Code, Headers, no_response}, _MethodCfg, ValidResponse) 
+															when map_size(ValidResponse)==0 ->
+  {ok, {Code, Headers}};
+
+prepare_response({Code, Headers, BodyRps}, _MethodCfg, ValidResponse) 
+															when is_binary(BodyRps) andalso map_size(ValidResponse)==0 ->
+  {ok, {Code, Headers, BodyRps}};
+
+prepare_response({Code, Headers, no_response}, MethodCfg, ValidResponse) 
+															when map_size(ValidResponse)>0 ->
+	prepare_response({Code, Headers, <<>>}, MethodCfg, ValidResponse);
+
+prepare_response({Code, Headers, BodyRps}, MethodCfg, ValidResponse) 
+															when is_binary(BodyRps) andalso map_size(ValidResponse)>0 ->
+	%?LOG_INFO(#{description => "Validattion response parameters",
+	%		req_body => BodyRps, headers => Headers, http_code => Code,
+	%		validator_schema => ValidResponse, method_cfg => MethodCfg}),
+	case maps:get(~"responses", MethodCfg, undefined) of
+		undefined ->
+			{ok, {Code, Headers, BodyRps}};
+		RspCfg ->
+			HttpCode = integer_to_binary(Code),
+			case maps:get(HttpCode, RspCfg, undefined) of
+				undefined ->
+					{ok, {Code, Headers, BodyRps}};
+				HttpCodeCfg ->
+					case maps:get(~"content", HttpCodeCfg, undefined) of
+						undefined ->
+							{ok, {Code, Headers, BodyRps}};
+						ContentTypes ->
+							case maps:get(~"content-type", Headers, undefined) of
+								undefined ->
+									{ok, {Code, Headers, BodyRps}};
+								ContentType ->
+									case maps:get(ContentType, ContentTypes, undefined) of
+										undefined ->
+											{ok, {Code, Headers, BodyRps}};
+										SchemaVal ->
+											case maps:get(ContentType, ValidResponse, undefined) of
+												undefined ->
+													{error, <<"response validator module for [", ContentType/binary, "] not found">>};
+												Validator ->
+												case garm_validator:validate(Validator, BodyRps, SchemaVal, false) of
+													{ok, _BodyRps} ->
+														{ok, {Code, Headers, BodyRps}};
+													{error, Reason} ->
+														{error, Reason}
+												end
+											end
+									end
+							end
+					end
+			end
+	end;
+
+prepare_response({_Code, _Headers, _BodyRps}, _MethodCfg, _ValidResponse) ->
+  error(unexpected_response).
 
 %% =============================================================================
 %% private functions
@@ -51,13 +124,12 @@ build(Status, Headers, Body) ->
 
 -doc """
 """.
--spec msg(non_neg_integer(), map(), binary()) -> {non_neg_integer(), map(), map() | binary()}.
+-spec msg(pos_integer(), map(), binary()) -> {pos_integer(), map(), map() | binary()}.
 msg(Status, Headers, Body) ->
 	{Status, Headers, Body}.
 
 -doc """
 """.
--spec msg(non_neg_integer(), map()) -> {non_neg_integer(), map()}.
+-spec msg(pos_integer(), map()) -> {pos_integer(), map()}.
 msg(Status, Headers) ->
 	{Status, Headers}.
-

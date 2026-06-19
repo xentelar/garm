@@ -42,7 +42,7 @@ start_link() ->
 
 -doc """
 sup_flags() = #{strategy => strategy(),         % optional
-                intensity => non_neg_integer(), % optional
+                intensity => pos_integer(), % optional
                 period => pos_integer()}        % optional
 child_spec() = #{id => child_id(),       % mandatory
                 start => mfargs(),      % mandatory

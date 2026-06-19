@@ -39,14 +39,14 @@
 -spec init_cache() -> ok.
 init_cache() ->
 	{ok, _} = cache:start_link(user_info, [{n, 20}, {ttl, 1800}]),
-	?LOG_NOTICE(#{description => "cache was started"}),
+	?LOG_NOTICE(#{description => "Cache was started"}),
 	ok.
 
 -doc """
 """.
 -spec get_user_info(binary()) -> map() | atom().
 get_user_info(Id) ->
-	?LOG_DEBUG(#{description => "search user info on cache", 
+	?LOG_DEBUG(#{description => "Search user info on cache", 
 							id => Id}),
 	cache:get(user_info, Id).
 
@@ -54,7 +54,7 @@ get_user_info(Id) ->
 """.
 -spec put_user_info(binary(), map()) -> term().
 put_user_info(Id, Value) ->
-	?LOG_DEBUG(#{description => "put user info on cache", 
+	?LOG_DEBUG(#{description => "Put user info on cache", 
 							id => Id, value => Value}),
 	cache:put(user_info, Id, Value).
 

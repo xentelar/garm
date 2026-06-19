@@ -49,7 +49,7 @@ domains() ->
 			Path = filename:dirname(CfgFile),
 			[Config] = yamerl_constr:file(CfgFile, [str_node_as_binary]),
 
-			?LOG_DEBUG(#{description => "domains conf", 
+			?LOG_DEBUG(#{description => "Domains conf", 
 									domains => Config}),
 
 			case lists:keyfind(~"domains", 1, Config) of
@@ -77,7 +77,7 @@ config_path() ->
 		true ->
 			Path = filename:dirname(CfgFile),
 
-			?LOG_NOTICE(#{description => "path config", 
+			?LOG_NOTICE(#{description => "Path config", 
 									path => Path}),
 			Path;
 
@@ -94,7 +94,7 @@ domain_api(Path, FileName) ->
 		true ->
 			[Config] = yamerl_constr:file(FileName0, [{map_node_format, map}, str_node_as_binary]),
 
-			?LOG_DEBUG(#{description => "full api conf", 
+			?LOG_DEBUG(#{description => "Full api conf", 
 									full_api_def => Config}),
 			
 			PathsCfg =
@@ -193,7 +193,7 @@ set(KeyCfg, Cfg) ->
 """.
 -spec create_map(list()) -> map().
 create_map(Config) ->
-	?LOG_DEBUG(#{description => "trasnform tuple to map",
+	?LOG_DEBUG(#{description => "Trasnform tuple to map",
 							tuple => Config}),
 	create_map(Config, #{}).
 
@@ -270,7 +270,7 @@ filter(Path, Files, ExtentionFile) ->
 
            _ ->
              File = list_to_binary([Path, <<"/">>, V]),
-						 ?LOG_INFO(#{description => "file was found", 
+						 ?LOG_INFO(#{description => "File was found", 
 						 						file => File}),
              Aux0 = Aux ++ [File],
              Aux0

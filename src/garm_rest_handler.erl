@@ -128,7 +128,7 @@ known_methods(Req, #state{origin = Origin, methods = Methods} = State) ->
     false ->
       ?LOG_DEBUG(#{description => "Unknown Method", 
                   method => Method, methods => Methods}),
-      {Methods, resp_headers(Req, Origin), State};
+      {Methods, garm_http_response:resp_headers(Req, Origin), State};
 
     true ->
       ?LOG_DEBUG(#{description => "Method is ok",
@@ -153,7 +153,7 @@ uri_too_long(Req, #state{origin = Origin} = State) ->
         A when A>?URI_LONG ->
           ?LOG_DEBUG(#{description => "API Path is too long",
                       method => Method}),
-          {true, resp_headers(Req, Origin), State};
+          {true, garm_http_response:resp_headers(Req, Origin), State};
         _ ->
           ?LOG_DEBUG(#{description => "API Path is ok", 
                       method => Method}),
@@ -171,7 +171,7 @@ allowed_methods(Req, #state{origin = Origin, methods = Methods} = State) ->
     fasle ->
       ?LOG_DEBUG(#{description => "No allowed Method",
                   method => Method, methods => Methods}),
-      {Methods, resp_headers(Req, Origin), State};
+      {Methods, garm_http_response:resp_headers(Req, Origin), State};
 
     true ->
       ?LOG_DEBUG(#{description => "Allowed Method",
@@ -193,7 +193,7 @@ malformed_request(Req, #state{origin = Origin, cfg = MethodCfg} = State) ->
     _Class:Exception:Stacktrace ->
       ?LOG_DEBUG(#{description => "Parameter value error", 
         exception => Exception, stacktrace => Stacktrace}),
-      {true, resp_headers(Req, Origin), State}
+      {true, garm_http_response:resp_headers(Req, Origin), State}
   end.
 
 -doc """
@@ -208,7 +208,7 @@ is_authorized(Req, #state{origin = Origin} = State) ->
       {true, Req, State};
 
     Method ->
-      Req0 = resp_headers(Req, Origin),
+      Req0 = garm_http_response:resp_headers(Req, Origin),
       case State#state.auth_control of
         auth_ctrl_undefined ->
           ?LOG_DEBUG(#{description => "Auth Control is undefined", 
@@ -291,7 +291,7 @@ valid_content_headers(Req, #state{origin = Origin} = State) ->
             undefined ->
               ?LOG_DEBUG(#{description => "Content-Type is required", 
                           method => Method, request_body => RequestBody}),
-              {false, resp_headers(Req, Origin), State};
+              {false, garm_http_response:resp_headers(Req, Origin), State};
 
             ContentType -> 
               ?LOG_DEBUG(#{description => "Content-Type is present", 
@@ -325,7 +325,7 @@ valid_entity_length(Req, #state{origin = Origin} = State) ->
             A when A>?ENTITY_LENGTH ->
               ?LOG_DEBUG(#{description => "Entity is too long", 
                           sise => A, method => Method}),
-              {false, resp_headers(Req, Origin), State};
+              {false, garm_http_response:resp_headers(Req, Origin), State};
             _ ->
               ?LOG_DEBUG(#{description => "Entity is ok", 
                           method => Method}),
@@ -339,7 +339,7 @@ valid_entity_length(Req, #state{origin = Origin} = State) ->
 -spec content_types_provided(Req :: req(), State :: state()) ->
   {Value :: content_types(), Req :: req(), State :: state()}.
 content_types_provided(Req, #state{origin = Origin, cfg = Cfg} = State) ->
-  Req0 = resp_headers(Req, Origin),
+  Req0 = garm_http_response:resp_headers(Req, Origin),
   {ContentTypes, Req1} =
   case maps:get(<<"requestBody">>, Cfg, undefined) of
     undefined ->
@@ -363,7 +363,7 @@ content_types_provided(Req, #state{origin = Origin, cfg = Cfg} = State) ->
 -spec content_types_accepted(Req :: req(), State :: state()) ->
   {Value :: content_types(), Req :: req(), State :: state()}.
 content_types_accepted(Req, #state{origin = Origin, cfg = Cfg} = State) ->
-  Req0 = resp_headers(Req, Origin),
+  Req0 = garm_http_response:resp_headers(Req, Origin),
   {ContentTypes, Req1} =
   case maps:get(<<"requestBody">>, Cfg, undefined) of
     undefined ->
@@ -424,51 +424,9 @@ process_request(Req, State = #state{operation_id = OperationID,
                                         security = Security,
                                         valid_response = ValidResponse,
                                         origin = Origin}) ->
-  try 
-
-    DomainKey = maps:get(ref, Req),
-    case garm_http_request:get_body_from_req(MethodCfg, ParamValues, Req, ValidBody, ContentType) of
-      {error, Reason} ->
-        Req0 = resp_headers(Req, Origin),
-        reply_response({error, Reason}, Req0, State);
-
-      {error, HttpCode, Reason} ->
-        Req0 = resp_headers(Req, Origin),
-        reply_response({error, HttpCode, Reason}, Req0, State);
-
-      {ok, ParamValues0} ->
-        ParamValues1 = ParamValues0#{<<"security">> => Security},
-
-        ?LOG_DEBUG(#{description => "Process operationId", domain => DomainKey,
-                    operation_id => OperationID, param_values => ParamValues1}),
-
-        Response = 
-        case maybe_process(DomainKey, Adapter, OperationID, ParamValues1) of
-          {Code, Headers, BodyRps} ->
-            ?LOG_DEBUG(#{description => "response from adapter",
-              domain => DomainKey, operation_id => OperationID, 
-              rsp_code => Code, rsp_headers => Headers, body_response => BodyRps}),
-            prepare_response({Code, Headers, BodyRps}, MethodCfg, ValidResponse);
-
-          {Code, Headers} ->
-            ?LOG_DEBUG(#{description => "response from adapter",
-              domain => DomainKey, operation_id => OperationID, 
-              rsp_code => Code, rsp_headers => Headers, body_response => no_response}),
-            prepare_response({Code, Headers, no_response}, MethodCfg, ValidResponse)
-        end,
-
-        Req0 = resp_headers(Req, Origin),
-        reply_response({ok, Response}, Req0, State)
-    end
-
-  catch
-    _Class:Exception:Stacktrace ->
-      ?LOG_ERROR(#{description => "general error in request process", 
-                  op_id => OperationID, msg => Exception, 
-                  stacktrace => Stacktrace}),
-      Req1 = resp_headers(Req, Origin),
-      reply_response({error, Exception}, Req1, State)
-  end.
+  Response = process(Req, MethodCfg, ParamValues, Adapter, ValidBody, ValidResponse, ContentType, Security, OperationID),
+  Req0 = garm_http_response:resp_headers(Req, Origin),
+  reply_response(Response, Req0, State).
 
 %% =============================================================================
 %% private functions
@@ -476,14 +434,55 @@ process_request(Req, State = #state{operation_id = OperationID,
 
 -doc """
 """.
--spec maybe_process(binary(), module(), binary(), map()) -> tuple().
-maybe_process(DomainKey, Adapter, OperationID, Populated) ->
+-spec process(req(), map(), map(), atom(), map(), map(), binary(), map(), binary) -> tuple().
+process(Req, MethodCfg, ParamValues, Adapter, ValidBody, ValidResponse, ContentType, Security, OperationID) ->
+  try
+    DomainKey = maps:get(ref, Req),
+    case garm_http_request:get_body_from_req(MethodCfg, ParamValues, Req, ValidBody, ContentType) of
+      {error, Reason} ->
+        {error, Reason};
+
+      {error, HttpCode, Reason} ->
+        {error, HttpCode, Reason};
+
+      {ok, ParamValues0} ->
+        ParamValues1 = ParamValues0#{<<"security">> => Security},
+
+        ?LOG_DEBUG(#{description => "Process operationId", domain => DomainKey,
+                    operation_id => OperationID, param_values => ParamValues1}),
+
+        case dispatch_to_adapter(DomainKey, Adapter, OperationID, ParamValues1) of
+          {Code, Headers, BodyRps} ->
+            ?LOG_DEBUG(#{description => "Response from adapter",
+              domain => DomainKey, operation_id => OperationID, rsp_code => Code, 
+              rsp_headers => Headers, body_response => BodyRps, valid_response => ValidResponse}),
+            garm_http_response:prepare_response({Code, Headers, BodyRps}, MethodCfg, ValidResponse);
+
+          {Code, Headers} ->
+            ?LOG_DEBUG(#{description => "Response from adapter",
+              domain => DomainKey, operation_id => OperationID, 
+              rsp_code => Code, rsp_headers => Headers, body_response => no_response}),
+            garm_http_response:prepare_response({Code, Headers, no_response}, MethodCfg, ValidResponse)
+        end
+    end
+  catch
+    _Class:Exception:Stacktrace ->
+      ?LOG_ERROR(#{description => "HTTP request process general error", 
+                  op_id => OperationID, msg => Exception, 
+                  stacktrace => Stacktrace}),
+      {error, Exception}
+  end.
+
+-doc """
+""".
+-spec dispatch_to_adapter(binary(), module(), binary(), map()) -> tuple().
+dispatch_to_adapter(DomainKey, Adapter, OperationID, Populated) ->
   case garm_adapter:process(Adapter, DomainKey, OperationID, Populated) of
     {error, Reason} ->
-      ?LOG_ERROR(#{description => "adapter errors", 
+      ?LOG_DEBUG(#{description => "Adapter errors", 
         reason => Reason, adapter => Adapter, callback => process, 
         args => [DomainKey, OperationID, Populated]}),
-      garm_http_response:build(?SERVICE_UNAVAILABLE_HTTP_CODE, #{});
+      garm_http_response:build(?INTERNAL_GATEWAY_ERROR_HTTP_CODE, #{});
 
     {Code, Headers} ->
       {Code, Headers};
@@ -507,64 +506,17 @@ reply_response(Response, Req0, State = #state{operation_id = OperationID}) ->
       {stop, Req1, State};
 
     {error, Reason} ->
-      ?LOG_ERROR(#{description => "unable to process request", 
+      ?LOG_DEBUG(#{description => "Unable to process response", 
         op_id => OperationID, reason => Reason}), %state => State}),
-      Req2 = cowboy_req:reply(?INTERNAL_GATEWAY_ERROR_HTTP_CODE, Req0),
+      Req2 = cowboy_req:reply(?INTERNAL_GATEWAY_ERROR_HTTP_CODE, #{}, Req0),
       {stop, Req2, State};
 
     {error, HttpCode, Reason} ->
-      ?LOG_ERROR(#{description => "unable to process request", 
+      ?LOG_DEBUG(#{description => "Unable to process response", 
         op_id => OperationID, reason => Reason}), %state => State}),
-      Req2 = cowboy_req:reply(HttpCode, Req0),
+      Req2 = cowboy_req:reply(HttpCode, #{}, Req0),
       {stop, Req2, State}
   end.
-
--doc """
-""".
--spec prepare_response(tuple(), map(), atom()) -> binary().
-prepare_response({Code, Headers, no_response}, _MethodCfg, valid_rps_undefined) ->
-  {Code, Headers};
-
-prepare_response({Code, Headers, BodyRps}, _MethodCfg, valid_rps_undefined) when is_map(BodyRps) ->
-  {Code, Headers, thoas:encode(BodyRps)};
-
-prepare_response({Code, Headers, BodyRps}, _MethodCfg, valid_rps_undefined) when is_binary(BodyRps) ->
-  {Code, Headers, BodyRps};
-
-prepare_response({Code, Headers, no_response}, MethodCfg, ValidResponse) ->
-  case garm_validator:validate(ValidResponse, no_response, MethodCfg, false) of
-    true ->
-      {Code, Headers};
-    false ->
-      {?BAD_GATEWAY_HTTP_CODE, #{}}
-  end;
-
-prepare_response({Code, Headers, BodyRps}, MethodCfg, ValidResponse) when is_map(BodyRps) ->
-  case garm_validator:validate(ValidResponse, BodyRps, MethodCfg, false) of
-    true ->
-      {Code, Headers, thoas:encode(BodyRps)};
-    false ->
-      {?BAD_GATEWAY_HTTP_CODE, #{}}
-  end;
-
-prepare_response({Code, Headers, BodyRps}, MethodCfg, ValidResponse) when is_binary(BodyRps) ->
-  case garm_validator:validate(ValidResponse, BodyRps, MethodCfg, false) of
-    true ->
-      {Code, Headers, BodyRps};
-    false ->
-      {?BAD_GATEWAY_HTTP_CODE, #{}}
-  end;
-
-prepare_response({_Code, _Headers, _BodyRps}, _MethodCfg, _ValidResponse) ->
-  error(unexpected_response).
-
--doc """
-""".
--spec resp_headers(term(), binary()) -> term().
-resp_headers(Req, Origin) ->
-  cowboy_req:set_resp_headers(#{
-		<<"Access-Control-Allow-Origin">> => Origin
-	}, Req).
 
 -doc """
 """.

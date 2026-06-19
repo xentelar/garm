@@ -29,12 +29,29 @@
 %% public definitions
 %% =============================================================================
 
+-export([start/2]).
 -export([validate/4]).
+
+-doc """
+""".
+-callback init(ObjectsDef :: map()) -> {ok, term()} | {error, term()}.
 
 -doc """
 """.
 -callback validate(Value :: binary() | map(), ValidatorSchema :: term(), 
                   Required :: true | false) -> {ok, binary() | map()} | {error, term()}.
+
+-spec start(atom(), map()) -> {ok, term()} | {error, term()}.
+start(Handler, ObjectsDef) ->
+  try 
+
+    erlang:apply(Handler, init, [ObjectsDef])
+
+  catch _Class:Reason:_Stacktrace ->
+    ?LOG_ERROR(#{description => "Init validator errors", 
+          handler => Handler, callback => init, reason => Reason}),
+    {error, Reason}
+  end.
 
 -spec validate(atom(), binary() | map(), term(), true | false) -> {ok, binary() | map()} | {error, term()}.
 validate(Handler, Value, ValidatorSchema, Required) ->
@@ -43,7 +60,7 @@ validate(Handler, Value, ValidatorSchema, Required) ->
     erlang:apply(Handler, validate, [Value, ValidatorSchema, Required])
 
   catch _Class:Reason:_Stacktrace ->
-    ?LOG_ERROR(#{description => "Validator not found or not loaded", 
+    ?LOG_ERROR(#{description => "Validate errors", 
           handler => Handler, callback => validate, reason => Reason}),
     {error, Reason}
   end.

@@ -59,20 +59,20 @@ is_authorized(Token, Scopes) ->
 validate_bearer(Bearer) ->
 	Token = binary:replace(Bearer, <<"Bearer ">>, <<"">>),
 
-	?LOG_DEBUG(#{description => "token to process", 
+	?LOG_DEBUG(#{description => "Token to process", 
 							 token => Token}),
 	
 	JWK = garm_cache_manager:jwk(),
 	
 	case jose_jwt:verify(JWK, Token) of
 		{true, {_, JWT}, JWS} ->
-			?LOG_DEBUG(#{description => "verify token", 
+			?LOG_DEBUG(#{description => "Verify token", 
 							jwt => JWT, jws => JWS}),
 			maybe_expired(JWT);
 
 		Error ->
 			% invalid token, do something else
-			?LOG_ERROR(#{description => "the token is invalid", 
+			?LOG_ERROR(#{description => "The token is invalid", 
                 error => Error}),
 			false
 	end.
@@ -84,18 +84,18 @@ maybe_expired(JWT) ->
 	case maps:get(<<"exp">>, JWT, undefined) of
 		undefined ->
 
-			?LOG_ERROR(#{description => "the key expiration time (exp) is not present"}),
+			?LOG_ERROR(#{description => "The key expiration time (exp) is not present"}),
 			false;
 		
 		Exp ->
 			case ?IS_TIME_EXPIRED(Exp) of
 				true ->
-					?LOG_DEBUG(#{description => "token time has expired", 
+					?LOG_DEBUG(#{description => "Token time has expired", 
 							jwt => JWT}),
 					false;
 
 				false ->
-					?LOG_DEBUG(#{description => "token is ok", 
+					?LOG_DEBUG(#{description => "Token is ok", 
 							jwt => JWT}),
 					{true, #{<<"jwt">> => JWT}}
 			end

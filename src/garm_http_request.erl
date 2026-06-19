@@ -53,12 +53,14 @@ get_header_value(Name, Req) ->
 """.
 -spec get_body_from_req(map(), map(), cowboy_req:req(), map(), binary()) -> map().
 get_body_from_req(MethodCfg, ParamValues, Req, ValidBody, ContentType) ->
-  case maps:get(~"requestBody", MethodCfg, no_request_body) of
-    no_request_body ->
-      ParamValues#{~"body" => #{}};
+  % ?LOG_DEBUG(#{description => "Process operationId", method_cfg => MethodCfg, 
+  %   req_params => ParamValues, reques => Req, body_val => ValidBody, 
+  %   content_type => ContentType}),
+  case maps:get(~"requestBody", MethodCfg, undefined) of
+    undefined ->
+      {ok, ParamValues#{~"body" => #{}}};
     
     _RequestBody ->
-      %get_body_content(ParamValues, Req),
       case apply_content_type(MethodCfg, Req, ContentType, ValidBody) of
         {ok, Body} -> {ok, ParamValues#{<<"body">> => Body}};
         Error -> Error
@@ -169,13 +171,13 @@ get_value(ParamCfg, Value) ->
   end.
 
 -spec apply_content_type(map(), cowboy_req:req(), binary(), map()) -> 
-    binary() | map() | {error, non_neg_integer(), term()}.
+    binary() | map() | {error, pos_integer(), term()}.
 apply_content_type(MethodCfg, Req, ContentType, ValidBody) ->
   Body = get_body(Req),
   case maps:get(ContentType, ValidBody, undefined) of
     undefined -> 
-      {error, ~"validator adapter not found"};
-    Adapter -> 
+      {error, ~"validator module not found"};
+    Validator -> 
       case maps:get(~"requestBody", MethodCfg, undefined) of
         undefined ->
           {error, no_request_body};
@@ -189,7 +191,7 @@ apply_content_type(MethodCfg, Req, ContentType, ValidBody) ->
                   {error, request_body_config};
                 Schema ->
                   Required = maps:get(~"required", RequestBody, false),
-                  case garm_validator:validate(Adapter, Body, Schema, Required) of
+                  case garm_validator:validate(Validator, Body, Schema, Required) of
                     {ok, BodyJson} ->
                       {ok, BodyJson};
                     {error, Reason} ->

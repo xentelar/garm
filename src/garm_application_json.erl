@@ -31,7 +31,14 @@
 %% public functions
 %% =============================================================================
 
+-export([init/1]).
 -export([validate/3]).
+
+-spec init(ObjectsDef :: map()) -> {ok, term()} | {error, term()}.
+init(ObjectsDef) -> 
+	C = #{~"components" => ObjectsDef},
+  JesseState = jesse_state:new(C, [{default_schema_ver, <<"http://json-schema.org/draft-04/schema#">>}]),
+	{ok, JesseState}.
 
 -doc """
 """.
@@ -39,11 +46,11 @@
 validate(ReqBody, {Schema, JesseState}, Required) ->
 	try
 
-		?LOG_INFO(#{description => "validattion parameters",
+		?LOG_INFO(#{description => "Validattion parameters",
 			req_body => ReqBody, required => Required,
 			validator_schema => Schema}),
 
-		?LOG_DEBUG(#{description => "schema validattion",
+		?LOG_DEBUG(#{description => "Schema validattion",
 			jesse_state => JesseState}),
 
 		case {byte_size(ReqBody), Required} of

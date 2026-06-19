@@ -23,8 +23,8 @@
 -moduledoc """
 """.
 
--type response() :: {Status :: non_neg_integer(), Headers :: map()} 
-  | {Status :: non_neg_integer(), Headers :: map(), Body :: binary() | map()}
+-type response() :: {Status :: pos_integer(), Headers :: map()} 
+  | {Status :: pos_integer(), Headers :: map(), Body :: binary() | map()}
   | {error, term()}.
 -export_type([response/0]).
 
@@ -59,7 +59,7 @@ init(Handler, DomainKey, Populated) ->
     erlang:apply(Handler, start, [DomainKey, Populated])
 
   catch _Class:Reason:Stacktrace ->
-    ?LOG_ERROR(#{description => "adapter errors", 
+    ?LOG_ERROR(#{description => "Adapter errors", 
         reason => Reason, handler => Handler, callback => start,
         stacktrace => Stacktrace}),
     {error, Reason}
@@ -74,7 +74,7 @@ process(Adapter, DomainKey, OperationID, Populated) ->
     erlang:apply(Adapter, process, [DomainKey, OperationID, Populated])
     
   catch _Class:Reason:Stacktrace ->
-    ?LOG_ERROR(#{description => "adapter errors", 
+    ?LOG_ERROR(#{description => "Adapter errors", 
           reason => Reason, adapter => Adapter, callback => process,
           stacktrace => Stacktrace}),
     {error, Reason}

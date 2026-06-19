@@ -114,7 +114,7 @@
 -define(NOT_EXTENDED_HTTP_CODE,                     510).
 -define(NETWORK_AUTHENTICATION_REQUIRED_HTTP_CODE,  511).
 
--define(INTERNAL_GATEWAY_ERROR_HTTP_CODE,           512).
+-define(INTERNAL_GATEWAY_ERROR_HTTP_CODE,           ~"512").
 
 -define(HTTP_MSG_OK,                               {?OK_HTTP_CODE, <<"Ok">>}).
 -define(HTTP_MSG_CREATED,                          {?CREATED_HTTP_CODE, <<"The request has been fulfilled">>}).
@@ -167,7 +167,7 @@
 
 -define(HTTP_MSG_INTERNAL_SERVER_ERROR,            {?INTERNAL_SERVER_ERROR_HTTP_CODE, <<"Internal Server Error">>}).
 -define(HTTP_MSG_NOT_IMPLEMENTED,                  {?NOT_IMPLEMENTED_HTTP_CODE, <<"Not Implemented">>}).
--define(HTTP_MSG_BAD_GATEWAY,                      {?BAD_GATEWAY_HTTP_CODE, <<"Bad Gateway">>}).
+-define(HTTP_MSG_BAD_GATEWAY,                      {?BAD_GATEWAY_HTTP_CODE, <<"Gateway received an invalid response from the upstream server">>}).
 -define(HTTP_MSG_SERVICE_UNAVAILABLE,              {?SERVICE_UNAVAILABLE_HTTP_CODE, <<"Service Unavailable">>}).
 -define(HTTP_MSG_GATEWAY_TIMEOUT,                  {?GATEWAY_TIMEOUT_HTTP_CODE, <<"Gateway Timeout">>}).
 -define(HTTP_MSG_HTTP_VERSION_NOT_SUPPORTED,       {?HTTP_VERSION_NOT_SUPPORTED_HTTP_CODE, <<"HTTP Version Not Supported">>}).
