@@ -28,7 +28,7 @@
 -include("garm.hrl").
 
 -type operations() :: #{binary() => map()}.
--type init_opts()  :: {operations(), atom(), module()}.
+-type init_opts()  :: {operations(), map(), module(), map()}.
 
 -type protocol() :: [{'_',[{
                             ApiPath :: string(),
@@ -52,33 +52,36 @@ get_api_paths({Path, DomainKey}, DomainCfg) ->
   Handler = maps:get(<<"handler">>, DomainCfg, handler_undefined),
   ValidBody = maps:get(<<"validBody">>, DomainCfg, ?VALID_BODY_UNDEF),
   ValidResponse = maps:get(<<"validResponse">>, DomainCfg, ?VALID_RPS_UNDEF),
-  AuthControl = maps:get(<<"authControl">>, DomainCfg, auth_ctrl_undefined),
+  SecurityCfg = maps:get(<<"security">>, DomainCfg, ?SECURITY_CFG_UNDEF),
   Adapter = maps:get(<<"adapter">>, DomainCfg, adapter_undefined),
   
-  Paths = build_paths({Path, DomainKey}, ValidBody, ValidResponse),
+  Paths = build_paths(Path, DomainKey, ValidBody, ValidResponse),
   [
     {'_',
-      [build_router_conf(ApiPath, Handler, MethodsCfg, ValidBody, AuthControl, Adapter, ValidResponse) 
+      [build_router_conf(ApiPath, Handler, MethodsCfg, ValidBody, SecurityCfg, Adapter, ValidResponse) 
         || {ApiPath, MethodsCfg} <- Paths]
     }
   ].
 
 -doc """
 """.
--spec build_router_conf(binary(), atom(), map(), map(), atom(), atom(), map()) -> tuple().
-build_router_conf(ApiPath, Handler, MethodsCfg, ValidBody, AuthControl, Adapter, ValidResponse) ->
+-spec build_router_conf(binary(), atom(), map(), map(), map(), atom(), map()) -> tuple().
+build_router_conf(ApiPath, Handler, MethodsCfg, ValidBody, SecurityCfg, Adapter, ValidResponse) ->
   ApiPath0 = binary:replace(ApiPath, <<"}">>, <<"">>, [global]),
   ApiPath1 = binary:replace(ApiPath0, <<"{">>, <<":">>, [global]),
+
+  MethodsCfg0 = rebuild_security(MethodsCfg, SecurityCfg),
+
   ?LOG_DEBUG(#{description => "Routing Config", 
-              path => ApiPath1, 
-              handler => Handler,
-              state => {MethodsCfg, ValidBody, AuthControl, Adapter, ValidResponse}}),
-  {ApiPath1, Handler, {MethodsCfg, ValidBody, AuthControl, Adapter, ValidResponse}}.
+    path => ApiPath1, handler => Handler,
+    state => {MethodsCfg0, ValidBody, SecurityCfg, Adapter, ValidResponse}}),
+
+  {ApiPath1, Handler, {MethodsCfg0, ValidBody, Adapter, ValidResponse}}.
 
 -doc """
 """.
--spec build_paths(binary(), map(), map()) -> list().
-build_paths({Path, DomainKey}, ValidBody, ValidResponse) ->
+-spec build_paths(binary(), binary(), map(), map()) -> list().
+build_paths(Path, DomainKey, ValidBody, ValidResponse) ->
   {ApiPathsCfg, ComponentsCfg} = garm_config:domain_api(Path, DomainKey),
 
   F = fun(ApiPath, MethodsCfg, Acc) ->
@@ -181,6 +184,8 @@ find_rps_content_types(Responses, ComponentsCfg, ValidResponse) ->
   end,
   maps:fold(F, #{}, Responses).
 
+-doc """
+""".
 -spec rebuild_response(map(), map(), map()) -> map().
 rebuild_response(Response, ComponentsCfg, ValidResponse) ->
   case maps:get(~"content", Response, undefined) of
@@ -203,3 +208,36 @@ rebuild_response(Response, ComponentsCfg, ValidResponse) ->
       ContentTypes0 = maps:fold(F, #{}, ContentTypes),
       Response#{~"content" => ContentTypes0}
   end.
+
+-doc """
+""".
+-spec rebuild_security(map(), map()) -> map().
+rebuild_security(MethodsCfg, SecurityCfg) ->
+  F = fun(Method, MethodCfg, Acc) ->
+        ?LOG_DEBUG(#{description => "Method Config", 
+          methods => Method, methods_cfg => MethodCfg, sec_cfg => SecurityCfg}),
+        case maps:get(~"security", MethodCfg, undefined) of
+          undefined -> 
+            Acc#{Method => MethodCfg};
+          SecuritySchemas ->
+            P = fun(SecuritySchema) ->
+                  ?LOG_DEBUG(#{description => "Processing Security Schema", 
+                    security_schema => SecuritySchema, security_cfg => SecurityCfg}),
+                  [SecSchemaName] = maps:keys(SecuritySchema),
+                  case maps:get(SecSchemaName, SecurityCfg, undefined) of
+                    undefined ->
+                      error(security_schema_undef);
+                    SecSchemaDef ->
+                      ScopeNames = maps:get(SecSchemaName, SecuritySchema),
+                      SecSchemaDef0 = SecSchemaDef#{~"scope" => ScopeNames},
+                      ?LOG_DEBUG(#{description => "Final Security Schema", 
+                        security_schema => #{SecSchemaName => SecSchemaDef0}}),
+                      #{SecSchemaName => SecSchemaDef0}
+                  end
+            end,
+            SecuritySchemas0 = lists:map(P, SecuritySchemas),
+            MethodCfg0 = MethodCfg#{~"security" => SecuritySchemas0},
+            Acc#{Method => MethodCfg0}
+        end
+  end,
+  maps:fold(F, #{}, MethodsCfg).

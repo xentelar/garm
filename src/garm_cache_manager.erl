@@ -32,7 +32,7 @@
 -export([init_cache/0]).
 -export([get_user_info/1]).
 -export([put_user_info/2]).
--export([jwk/0]).
+%-export([jwk/0]).
 
 -doc """
 """.
@@ -58,12 +58,12 @@ put_user_info(Id, Value) ->
 							id => Id, value => Value}),
 	cache:put(user_info, Id, Value).
 
--doc """
-""".
--spec jwk() -> list().
-jwk() ->
-	[{_, JWT}] = ets:lookup(certificates, jwk),
-	JWT.
+% -doc """
+% """.
+% -spec jwk() -> list().
+% jwk() ->
+% 	[{_, JWT}] = ets:lookup(certificates, jwk),
+% 	JWT.
 
 %% =============================================================================
 %% private functions

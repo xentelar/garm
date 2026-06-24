@@ -18,52 +18,45 @@
 %%
 %% -----------------------------------------------------------------------------
 
--module(garm_validator).
+-module(garm_echo_adpter).
 
 -moduledoc """
 """.
 
+-behaviour(garm_adapter).
+
 -include_lib("kernel/include/logger.hrl").
 
+-include("http_commons.hrl").
+
 %% =============================================================================
-%% public definitions
+%% public functions
 %% =============================================================================
 
 -export([start/2]).
--export([validate/4]).
+-export([process/3]).
 
 -doc """
 """.
--callback init(SecurityDef :: map()) -> {ok, term()} | {error, term()}.
+-spec start(binary(), map()) -> term().
+start(DomainKey, OperationsCfg) ->
+	?LOG_INFO(#{description => "Started Echo adapter",
+						domain_key => DomainKey,
+						operations_cfg => OperationsCfg}).
 
 -doc """
 """.
--callback validate(Value :: binary() | map(), ValidatorSchema :: term(), 
-                  Required :: true | false) -> {ok, binary() | map()} | {error, term()}.
+-spec process(binary(), binary(), map()) -> tuple().
+process(DomainKey, OperationID, Populated) ->
 
--spec start(atom(), map()) -> {ok, term()} | {error, term()}.
-start(Handler, SecurityDef) ->
-  try 
+	?LOG_INFO(#{description => "Process operation",
+						domain_key => DomainKey,
+						op_id => OperationID,
+						populated => Populated}),
 
-    erlang:apply(Handler, init, [SecurityDef])
-
-  catch _Class:Reason:_Stacktrace ->
-    ?LOG_ERROR(#{description => "Init security conf errors", 
-          handler => Handler, callback => init, reason => Reason}),
-    {error, Reason}
-  end.
-
--spec validate(atom(), binary() | map(), term(), true | false) -> {ok, binary() | map()} | {error, term()}.
-validate(Handler, Value, ValidatorSchema, Required) ->
-  try 
-
-    erlang:apply(Handler, validate, [Value, ValidatorSchema, Required])
-
-  catch _Class:Reason:_Stacktrace ->
-    ?LOG_ERROR(#{description => "Security conf errors", 
-          handler => Handler, callback => validate, reason => Reason}),
-    {error, Reason}
-  end.
+	Response = thoas:encode(Populated),
+	Headers = #{<<"content-type">> => <<"application/json">>},
+	garm_http_response:build(?OK_HTTP_CODE, Headers, Response).
 
 %% =============================================================================
 %% private functions

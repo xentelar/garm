@@ -27,10 +27,10 @@
 
 -include("http_commons.hrl").
 
--define(DEFAULT_VALUES, #{<<"headers">> => #{},
-                        <<"headers-ext">> => #{}, 
-                        <<"bindings">> => #{}, 
-                        <<"query-values">> => #{}}).
+-define(DEFAULT_VALUES, #{~"headers" => #{},
+                        ~"headers-ext" => #{}, 
+                        ~"bindings" => #{}, 
+                        ~"query-values" => #{}}).
 
 %% =============================================================================
 %% public functions
@@ -46,7 +46,7 @@
   {any(), cowboy_req:req()} | {error, any(), cowboy_req:req()}.
 get_header_value(Name, Req) ->
   Headers = cowboy_req:headers(Req),
-  Name0 = garm_utils:to_header(Name),
+  Name0 = to_header(Name),
   maps:get(Name0, Headers, undefined).
 
 -doc """
@@ -62,7 +62,7 @@ get_body_from_req(MethodCfg, ParamValues, Req, ValidBody, ContentType) ->
     
     _RequestBody ->
       case apply_content_type(MethodCfg, Req, ContentType, ValidBody) of
-        {ok, Body} -> {ok, ParamValues#{<<"body">> => Body}};
+        {ok, Body} -> {ok, ParamValues#{~"body" => Body}};
         Error -> Error
       end
   end.
@@ -71,21 +71,21 @@ get_body_from_req(MethodCfg, ParamValues, Req, ValidBody, ContentType) ->
 """.
 -spec get_params_values(map(), cowboy_req:req()) -> map().
 get_params_values(MethodCfg, Req) ->
-  case maps:get(<<"parameters">>, MethodCfg, no_params) of
+  case maps:get(~"parameters", MethodCfg, no_params) of
     no_params ->
       ?DEFAULT_VALUES;
 
     ParamsCfg -> 
       F = fun(ParamCfg, Values) ->
-            ParamName = maps:get(<<"name">>, ParamCfg),
-            case maps:get(<<"in">>, ParamCfg) of
-              <<"header">> ->
+            ParamName = maps:get(~"name", ParamCfg),
+            case maps:get(~"in", ParamCfg) of
+              ~"header" ->
                 get_header_param(ParamName, Values, ParamCfg, Req);
 
-              <<"path">> ->
+              ~"path" ->
                 get_binding_param(ParamName, Values, ParamCfg, Req);
 
-              <<"query">> ->
+              ~"query" ->
                 get_query_param(ParamName, Values, ParamCfg, Req)
             end
       end,
@@ -100,28 +100,28 @@ get_params_values(MethodCfg, Req) ->
 """.
 -spec get_header_param(binary(), map(), map(), term()) -> map().
 get_header_param(ParamName, Values, ParamCfg, Req) ->
-  Hs = maps:get(<<"headers">>, Values),
+  Hs = maps:get(~"headers", Values),
   Value = get_header_value(ParamName, Req),
   Headers = Hs#{ParamName => get_value(ParamCfg, Value)},
-  Values#{<<"headers">> => Headers}.
+  Values#{~"headers" => Headers}.
 
 -doc """
 """.
 -spec get_binding_param(binary(), map(), map(), term()) -> map().
 get_binding_param(ParamName, Values, ParamCfg, Req) ->
-  Bs = maps:get(<<"bindings">>, Values),
+  Bs = maps:get(~"bindings", Values),
   Value = get_binding_value(ParamName, Req),
   Bindings = Bs#{ParamName => get_value(ParamCfg, Value)},
-  Values#{<<"bindings">> => Bindings}.
+  Values#{~"bindings" => Bindings}.
 
 -doc """
 """.
 -spec get_query_param(binary(), map(), map(), term()) -> map().
 get_query_param(QueryName, Values, ParamCfg, Req) ->
-  QVs = maps:get(<<"query-values">>, Values),
+  QVs = maps:get(~"query-values", Values),
   Value = get_query_value(QueryName, Req),
   QueryValues = QVs#{QueryName => get_value(ParamCfg, Value)},
-  Values#{<<"query-values">> => QueryValues}.
+  Values#{~"query-values" => QueryValues}.
 
 -doc """
 """.
@@ -141,7 +141,7 @@ get_body(Req0) ->
   {any(), cowboy_req:req()} | {error, any(), cowboy_req:req()}.
 get_query_value(Name, Req) ->
   QS = cowboy_req:parse_qs(Req),
-  Value = garm_utils:get_opt(garm_utils:to_qs(Name), QS),
+  Value = garm_utils:get_opt(to_qs(Name), QS),
   {Value, Req}.
 
 -doc """
@@ -149,7 +149,7 @@ get_query_value(Name, Req) ->
 -spec get_binding_value(any(), cowboy_req:req()) ->
   {any(), cowboy_req:req()} | {error, any(), cowboy_req:req()}.
 get_binding_value(Name, Req) ->
-  Name0 = garm_utils:to_binding(Name),
+  Name0 = to_binding(Name),
   cowboy_req:binding(Name0, Req, undefined).
 
 -doc """
@@ -157,17 +157,17 @@ get_binding_value(Name, Req) ->
 -spec get_value(map(), binary()) -> number() | binary() | atom().
 get_value(ParamCfg, Value) ->
   #{
-    <<"schema">> := #{
-      <<"type">> := Type
+    ~"schema" := #{
+      ~"type" := Type
     }
   } = ParamCfg,
 
   case Type of
-    <<"number">> -> binary_to_integer(Value);
-    <<"integer">> -> binary_to_integer(Value);
-    <<"string">> -> Value;
-    <<"boolean">> -> binary_to_atom(Value);
-    <<"array">> -> Value
+    ~"number" -> binary_to_integer(Value);
+    ~"integer" -> binary_to_integer(Value);
+    ~"string" -> Value;
+    ~"boolean" -> garm_utils:to_boolean(Value);
+    ~"array" -> Value
   end.
 
 -spec apply_content_type(map(), cowboy_req:req(), binary(), map()) -> 
@@ -201,3 +201,23 @@ apply_content_type(MethodCfg, Req, ContentType, ValidBody) ->
           end
       end
   end.
+
+-doc """
+""".
+-spec to_header(iodata() | atom() | number()) -> binary().
+to_header(Name) ->
+  Prepared = garm_utils:to_binary(Name),
+  garm_utils:to_lower(Prepared).
+
+-doc """
+""".
+-spec to_qs(iodata() | atom() | number()) -> binary().
+to_qs(Name) ->
+  garm_utils:to_binary(Name).
+
+-doc """
+""".
+-spec to_binding(iodata() | atom() | number()) -> atom().
+to_binding(Name) ->
+  Prepared = garm_utils:to_binary(Name),
+  binary_to_atom(Prepared, utf8).

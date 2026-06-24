@@ -43,7 +43,7 @@
   content_type        :: binary(),
   cfg = #{}           :: map(),
   valid_body          :: atom(),
-  auth_control        :: atom(),
+  security_schemas    :: [map()],
   adapter             :: atom(),
   valid_response      :: atom(),
   origin              :: binary(),
@@ -85,37 +85,30 @@
 """.
 -spec init(Req :: req(), Opts :: garm_cowboy_config:init_opts()) ->
   {cowboy_rest, Req :: req(), State :: state()}.
-init(Req, {MethodsCfg, ValidBody, AuthControl, Adapter, ValidResponse}) ->
+init(Req, {MethodsCfg, ValidBody, Adapter, ValidResponse}) ->
   Method = cowboy_req:method(Req),
   Method0 = garm_utils:to_lower(Method),
   Origin = cowboy_req:header(<<"origin">>, Req, <<"*">>),
-
-  ?LOG_DEBUG(#{description => "Request to be processed",
-            method => Method,
-            request => Req,
-            state => {MethodsCfg, ValidBody, AuthControl, Adapter, ValidResponse}}),
-
+  ?LOG_DEBUG(#{description => "Data Gathering to process the request",
+    method => Method, request => Req, 
+    state => {MethodsCfg, ValidBody, Adapter, ValidResponse}}),
   MethodCfg = maps:get(Method0, MethodsCfg, #{}),
   OperationID = maps:get(<<"operationId">>, MethodCfg, not_allowed),
-  
+  SecuritySchemas = maps:get(<<"security">>, MethodCfg, []),
   Methods = maps:keys(MethodsCfg) ++ [<<"OPTIONS">>],
   Methods0 = lists:map(fun(M) -> garm_utils:to_upper(M) end, Methods),
-
   State = #state{
     operation_id = OperationID,
     cfg = MethodCfg,
     valid_body = ValidBody, 
-    auth_control = AuthControl, 
+    security_schemas = SecuritySchemas, 
     adapter = Adapter,
     valid_response = ValidResponse,
     origin = Origin,
     methods = Methods0
   },
-
-  ?LOG_DEBUG(#{description => "Attempt to process operation",
-              operation_id => OperationID,
-              state => State}),
-
+  ?LOG_DEBUG(#{description => "Processing the request",
+    operation_id => OperationID, state => State}),
   {cowboy_rest, Req, State}.
 
 -doc """
@@ -129,7 +122,6 @@ known_methods(Req, #state{origin = Origin, methods = Methods} = State) ->
       ?LOG_DEBUG(#{description => "Unknown Method", 
                   method => Method, methods => Methods}),
       {Methods, garm_http_response:resp_headers(Req, Origin), State};
-
     true ->
       ?LOG_DEBUG(#{description => "Method is ok",
                   method => Method, methods => Methods}),
@@ -172,7 +164,6 @@ allowed_methods(Req, #state{origin = Origin, methods = Methods} = State) ->
       ?LOG_DEBUG(#{description => "No allowed Method",
                   method => Method, methods => Methods}),
       {Methods, garm_http_response:resp_headers(Req, Origin), State};
-
     true ->
       ?LOG_DEBUG(#{description => "Allowed Method",
                   method => Method, methods => Methods}),
@@ -206,45 +197,23 @@ is_authorized(Req, #state{origin = Origin} = State) ->
       ?LOG_DEBUG(#{description => "No security is needed", 
                   method => <<"OPTIONS">>}),
       {true, Req, State};
-
     Method ->
       Req0 = garm_http_response:resp_headers(Req, Origin),
-      case State#state.auth_control of
-        auth_ctrl_undefined ->
+      case State#state.security_schemas of
+        [] ->
           ?LOG_DEBUG(#{description => "Auth Control is undefined", 
                       method => Method}),
-          %{{false, <<"auth control is undefined">>}, Req0, State};
           {true, Req, State};
-
-        AuthModule ->
-          Cfg = State#state.cfg,
-          case maps:get(<<"security">>, Cfg, undefined) of
-            undefined ->
-              ?LOG_DEBUG(#{description => "Security config not found", 
+        SecuritySchemas ->
+          case garm_auth:is_authorized(Req, SecuritySchemas) of
+            false -> 
+              ?LOG_DEBUG(#{description => "Authorization expired or not allowed", 
                           method => Method}),
-              {true, Req, State};
-
-            _ ->
-              case garm_http_request:get_header_value(<<"Authorization">>, Req) of
-                undefined ->
-                  ?LOG_DEBUG(#{description => "Authorization header is undefined", 
+              {{false, <<"Authorization expired or not allowed">>}, Req0, State};
+            {true, Security} ->
+              ?LOG_DEBUG(#{description => "Authorization header is ok", 
                           method => Method}),
-                  {{false, <<"Authorization header is undefined">>}, Req0, State};
-
-                Token ->
-                  Scopes = [],
-                  case AuthModule:is_authorized(Token, Scopes) of
-                    false -> 
-                      ?LOG_DEBUG(#{description => "Authorization expired or not allowed", 
-                                  method => Method}),
-                      {{false, <<"Authorization expired or not allowed">>}, Req0, State};
-
-                    {true, Security} ->
-                      ?LOG_DEBUG(#{description => "Authorization header is ok", 
-                                  method => Method}),
-                      {true, Req, State#state{security = Security}}
-                  end
-              end
+              {true, Req, State#state{security = Security}}
           end
       end
   end.
@@ -273,7 +242,6 @@ valid_content_headers(Req, #state{origin = Origin} = State) ->
       ?LOG_DEBUG(#{description => "No validate", 
                   method => <<"OPTIONS">>}),
       {true, Req, State};
-
     Method -> 
       Cfg = State#state.cfg,
       ?LOG_DEBUG(#{description => "Headers from request", 
@@ -285,7 +253,6 @@ valid_content_headers(Req, #state{origin = Origin} = State) ->
           ?LOG_DEBUG(#{description => "No Request Body, No validate", 
                       method => Method}),
           {true, Req0, State#state{content_type = undefined}};
-
         RequestBody ->
           case garm_http_request:get_header_value(<<"content-type">>, Req) of
             undefined ->
@@ -311,7 +278,6 @@ valid_entity_length(Req, #state{origin = Origin} = State) ->
       ?LOG_DEBUG(#{description => "No Entity", 
                   method => <<"OPTIONS">>}),
       {true, Req, State};
-
     Method ->
       Cfg = State#state.cfg,
       case maps:get(<<"requestBody">>, Cfg, no_request_body) of
@@ -319,7 +285,6 @@ valid_entity_length(Req, #state{origin = Origin} = State) ->
           ?LOG_DEBUG(#{description => "No Entity", 
                       method => Method}),
           {true, Req, State};
-        
         _RequestBody ->
           case cowboy_req:body_length(Req) of
             A when A>?ENTITY_LENGTH ->
@@ -338,50 +303,22 @@ valid_entity_length(Req, #state{origin = Origin} = State) ->
 """.
 -spec content_types_provided(Req :: req(), State :: state()) ->
   {Value :: content_types(), Req :: req(), State :: state()}.
-content_types_provided(Req, #state{origin = Origin, cfg = Cfg} = State) ->
-  Req0 = garm_http_response:resp_headers(Req, Origin),
-  {ContentTypes, Req1} =
-  case maps:get(<<"requestBody">>, Cfg, undefined) of
-    undefined ->
-      {[{{<<"*">>, <<"*">>, '*'}, process_request}], Req};
-
-    RequestBody ->
-      Contents = maps:get(<<"content">>, RequestBody),
-      ContentsKeys = maps:keys(Contents),
-      F = fun(ContentType) -> 
-            {content_type(ContentType), process_request} 
-          end,
-      {lists:map(F, ContentsKeys), Req0}
-  end,
+content_types_provided(Req, State) ->
+  {ContentTypes, Req1} = content_types(Req, State),
   ?LOG_DEBUG(#{description => "Content types provided", 
-            method => cowboy_req:method(Req1), 
-            content_types_provided => ContentTypes}),
+    domain => maps:get(ref, Req), operation_id => State#state.operation_id,
+    method => cowboy_req:method(Req1), content_types_provided => ContentTypes}),
   {ContentTypes, Req1, State}.
 
 -doc """
 """.
 -spec content_types_accepted(Req :: req(), State :: state()) ->
   {Value :: content_types(), Req :: req(), State :: state()}.
-content_types_accepted(Req, #state{origin = Origin, cfg = Cfg} = State) ->
-  Req0 = garm_http_response:resp_headers(Req, Origin),
-  {ContentTypes, Req1} =
-  case maps:get(<<"requestBody">>, Cfg, undefined) of
-    undefined ->
-      {[{{<<"*">>, <<"*">>, '*'}, process_request}], Req};
-
-    RequestBody ->
-      Contents = maps:get(<<"content">>, RequestBody),
-      ContentsKeys = maps:keys(Contents),
-      F = fun(ContentType) -> 
-            {content_type(ContentType), process_request} 
-          end,
-      {lists:map(F, ContentsKeys), Req0}
-  end,
+content_types_accepted(Req, State) ->
+  {ContentTypes, Req1} = content_types(Req, State),
   ?LOG_DEBUG(#{description => "Content types accepted", 
-            domain => maps:get(ref, Req), 
-            operation_id => State#state.operation_id,
-            method => cowboy_req:method(Req1), 
-            content_types_accepted => ContentTypes}),
+    domain => maps:get(ref, Req), operation_id => State#state.operation_id,
+    method => cowboy_req:method(Req1), content_types_accepted => ContentTypes}),
   {ContentTypes, Req1, State}.
 
 -doc """
@@ -441,23 +378,18 @@ process(Req, MethodCfg, ParamValues, Adapter, ValidBody, ValidResponse, ContentT
     case garm_http_request:get_body_from_req(MethodCfg, ParamValues, Req, ValidBody, ContentType) of
       {error, Reason} ->
         {error, Reason};
-
       {error, HttpCode, Reason} ->
         {error, HttpCode, Reason};
-
       {ok, ParamValues0} ->
         ParamValues1 = ParamValues0#{<<"security">> => Security},
-
         ?LOG_DEBUG(#{description => "Process operationId", domain => DomainKey,
-                    operation_id => OperationID, param_values => ParamValues1}),
-
+          operation_id => OperationID, param_values => ParamValues1}),
         case dispatch_to_adapter(DomainKey, Adapter, OperationID, ParamValues1) of
           {Code, Headers, BodyRps} ->
             ?LOG_DEBUG(#{description => "Response from adapter",
               domain => DomainKey, operation_id => OperationID, rsp_code => Code, 
               rsp_headers => Headers, body_response => BodyRps, valid_response => ValidResponse}),
             garm_http_response:prepare_response({Code, Headers, BodyRps}, MethodCfg, ValidResponse);
-
           {Code, Headers} ->
             ?LOG_DEBUG(#{description => "Response from adapter",
               domain => DomainKey, operation_id => OperationID, 
@@ -483,10 +415,8 @@ dispatch_to_adapter(DomainKey, Adapter, OperationID, Populated) ->
         reason => Reason, adapter => Adapter, callback => process, 
         args => [DomainKey, OperationID, Populated]}),
       garm_http_response:build(?INTERNAL_GATEWAY_ERROR_HTTP_CODE, #{});
-
     {Code, Headers} ->
       {Code, Headers};
-
     {Code, Headers, Body} ->
       {Code, Headers, Body}
   end.
@@ -500,22 +430,35 @@ reply_response(Response, Req0, State = #state{operation_id = OperationID}) ->
     {ok, {Code, Headers}} ->
       Req1 = cowboy_req:reply(Code, Headers, Req0),
       {stop, Req1, State};
-
     {ok, {Code, Headers, Body}} ->
       Req1 = cowboy_req:reply(Code, Headers, Body, Req0),
       {stop, Req1, State};
-
     {error, Reason} ->
       ?LOG_DEBUG(#{description => "Unable to process response", 
         op_id => OperationID, reason => Reason}), %state => State}),
       Req2 = cowboy_req:reply(?INTERNAL_GATEWAY_ERROR_HTTP_CODE, #{}, Req0),
       {stop, Req2, State};
-
     {error, HttpCode, Reason} ->
       ?LOG_DEBUG(#{description => "Unable to process response", 
         op_id => OperationID, reason => Reason}), %state => State}),
       Req2 = cowboy_req:reply(HttpCode, #{}, Req0),
       {stop, Req2, State}
+  end.
+
+-spec content_types(Req :: req(), State :: state()) ->
+  {Value :: content_types(), Req :: req(), State :: state()}.
+content_types(Req, #state{origin = Origin, cfg = Cfg}) ->
+  Req0 = garm_http_response:resp_headers(Req, Origin),
+  case maps:get(<<"requestBody">>, Cfg, undefined) of
+    undefined ->
+      {[{{<<"*">>, <<"*">>, '*'}, process_request}], Req};
+    RequestBody ->
+      Contents = maps:get(<<"content">>, RequestBody),
+      ContentsKeys = maps:keys(Contents),
+      F = fun(ContentType) -> 
+            {content_type(ContentType), process_request} 
+      end,
+      {lists:map(F, ContentsKeys), Req0}
   end.
 
 -doc """

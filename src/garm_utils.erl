@@ -32,13 +32,10 @@
 -export([to_list/1]).
 -export([to_float/1]).
 -export([to_int/1]).
+-export([to_boolean/1]).
 
 -export([to_lower/1]).
 -export([to_upper/1]).
-
--export([to_header/1]).
--export([to_qs/1]).
--export([to_binding/1]).
 
 -export([get_opt/2]).
 -export([get_opt/3]).
@@ -57,8 +54,8 @@ to_binary(V) when is_float(V)   -> float_to_binary(V).
 -doc """
 """.
 -spec to_list(iodata() | atom() | number()) -> string().
-to_list(V) when is_list(V)    -> V;
-to_list(V)            -> binary_to_list(to_binary(V)).
+to_list(V) when is_list(V) -> V;
+to_list(V) -> binary_to_list(to_binary(V)).
 
 -doc """
 """.
@@ -86,6 +83,31 @@ to_int(Data) when is_binary(Data) ->
 to_int(Data) when is_list(Data) ->
   list_to_integer(Data).
 
+-spec to_boolean(binary() | string() | non_neg_integer()) -> true | false.
+to_boolean(Data) when is_binary(Data) ->
+  case Data of
+    ~"true" -> true;
+    ~"false" -> false;
+    ~"True" -> true;
+    ~"False" -> false;
+    ~"TRUE" -> true;
+    ~"FALSE" -> false
+  end;
+to_boolean(Data) when is_list(Data) ->
+  case Data of
+    "true" -> true;
+    "false" -> false;
+    "True" -> true;
+    "False" -> false;
+    "TRUE" -> true;
+    "FALSE" -> false
+  end;
+to_boolean(Data) when is_integer(Data) ->
+  case Data of
+    1 -> true;
+    0 -> false
+  end.
+
 -doc """
 """.
 -spec set_resp_headers([{binary(), iodata()}], cowboy_req:req()) -> cowboy_req:req().
@@ -94,26 +116,6 @@ set_resp_headers([], Req) ->
 set_resp_headers([{K, V} | T], Req0) ->
   Req = cowboy_req:set_resp_header(K, V, Req0),
   set_resp_headers(T, Req).
-
--doc """
-""".
--spec to_header(iodata() | atom() | number()) -> binary().
-to_header(Name) ->
-  Prepared = to_binary(Name),
-  to_lower(Prepared).
-
--doc """
-""".
--spec to_qs(iodata() | atom() | number()) -> binary().
-to_qs(Name) ->
-  to_binary(Name).
-
--doc """
-""".
--spec to_binding(iodata() | atom() | number()) -> atom().
-to_binding(Name) ->
-  Prepared = to_binary(Name),
-  binary_to_atom(Prepared, utf8).
 
 -doc """
 """.

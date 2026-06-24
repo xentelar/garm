@@ -37,7 +37,6 @@
 init() ->
 	try
 
-	  init_cfg(),
     init_domains(),
     ?LOG_NOTICE(#{description => "Config was loaded"})
 
@@ -66,9 +65,10 @@ init_domains() ->
         Port = maps:get(<<"apiPort">>, DomainCfg),
         OperationsCfg = load_domain_cfg(DomainKey, DomainCfg, Path),
         start_adapter(DomainKey, DomainCfg, OperationsCfg),
+        DomainCfg0 = start_security(DomainKey, DomainCfg),
         {Transport, TransportOpts} = socket_transport(IP, Port, NetOpts),
         %ExtraOpts = maps:get(cowboy_extra_opts, Params, []),
-        CowboyOpts = api_config({Path, DomainKey}, DomainCfg),
+        CowboyOpts = api_config({Path, DomainKey}, DomainCfg0),
         case Transport of
           ssl ->
             cowboy:start_tls(DomainKey, TransportOpts, CowboyOpts),
@@ -83,33 +83,27 @@ init_domains() ->
 
   maps:foreach(F, Domains).
 
--doc """
-""".
--spec init_cfg() -> term().
-init_cfg() ->
-
-  Path = garm_config:config_path(),
-
-  Files = garm_config:list_files(Path, <<".pem">>),
-
-  ?LOG_NOTICE(#{description => "Load certs", crets => Files}),
-  
-  ets:new(certificates, [public, named_table, {read_concurrency, true}]),
-
-  F = fun(CertPath) ->
-    JWK = jose_jwk:from_pem_file(binary_to_list(CertPath)),
-    ?LOG_NOTICE(#{description => "Load JWK", jwk => JWK}),
-    ets:insert(certificates, {jwk, JWK})
-  end,
-
-  lists:foreach(F, Files).
+% -doc """
+% """.
+% -spec init_cfg() -> term().
+% init_cfg() ->
+%   Path = garm_config:config_path(),
+%   Files = garm_config:list_files(Path, <<".pem">>),
+%   ?LOG_NOTICE(#{description => "Load certs", crets => Files}),
+%   ets:new(certificates, [public, named_table, {read_concurrency, true}]),
+%   F = fun(CertPath) ->
+%     JWK = jose_jwk:from_pem_file(binary_to_list(CertPath)),
+%     ?LOG_NOTICE(#{description => "Load JWK", jwk => JWK}),
+%     ets:insert(certificates, {jwk, JWK})
+%   end,
+%   lists:foreach(F, Files).
 
 -doc """
 """.
 -spec load_domain_cfg(binary(), map(), binary()) -> term().
 load_domain_cfg(DomainKey, DomainCfg, Path) ->
-  case maps:get(<<"cfg">>, DomainCfg, cfg_undefined) of
-    cfg_undefined ->
+  case maps:get(<<"cfg">>, DomainCfg, undefined) of
+    undefined ->
       ?LOG_DEBUG(#{description => "Domain cfg not found", 
                 domain => DomainKey}),
       #{};
@@ -154,10 +148,10 @@ socket_transport(IP, Port, NetOpts) ->
 """.
 -spec start_adapter(binary(), map(), map()) -> term().
 start_adapter(DomainKey, DomainCfg, OperationsCfg) ->
-  case maps:get(<<"adapter">>, DomainCfg, adapter_undefined) of
-    adapter_undefined ->
+  case maps:get(~"adapter", DomainCfg, undefined) of
+    undefined ->
       ?LOG_DEBUG(#{description => "Adapter not found", 
-                    domain_key => DomainKey});
+        domain_key => DomainKey});
     Adapter ->
       try 
         case garm_adapter:init(Adapter, DomainKey, OperationsCfg) of
@@ -178,4 +172,31 @@ start_adapter(DomainKey, DomainCfg, OperationsCfg) ->
             args => [DomainKey, OperationsCfg], domain_key => DomainKey, 
             stacktrace => Stacktrace})
       end
+  end.
+
+-doc """
+""".
+-spec start_security(binary(), map()) -> map() | {error, term()}.
+start_security(DomainKey, DomainCfg) ->
+  case maps:get(~"security", DomainCfg, undefined) of
+    undefined ->
+      ?LOG_INFO(#{description => "Security not defined", 
+        domain_key => DomainKey});
+    SecurityDefs ->
+      F = fun(SecScheme, SecurityDef, Acc) ->
+            case maps:get(~"authControl", SecurityDef, undefined) of
+              undefined -> 
+                error(auth_control_undef);
+              AuthControl ->
+                case garm_auth:start(AuthControl, DomainKey, SecScheme, SecurityDef) of
+                  {ok, SecurityData} ->
+                    SecurityDef0 = SecurityDef#{~"authData" => SecurityData},
+                    Acc#{SecScheme => SecurityDef0};
+                  {error, Reason} ->
+                    error(Reason)
+                end
+            end
+      end,
+      SecurityDefs0 = maps:fold(F, #{}, SecurityDefs),
+      DomainCfg#{~"security" => SecurityDefs0}
   end.

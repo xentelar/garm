@@ -20,6 +20,8 @@
 
 -module(garm_jwt_auth).
 
+-behaviour(garm_auth).
+
 -moduledoc """
 """.
 
@@ -34,19 +36,48 @@
 %% =============================================================================
 
 -export([is_authorized/2]).
+-export([start/3]).
+
+-spec start(binary(), binary(), map()) -> {ok, term()} | {error, term()}.
+start(DomainKey, SecScheme , SecurityDef) ->
+	case maps:get(~"certificate", SecurityDef, undefined) of
+		undefined -> 
+			{error, cert_not_found};
+		CertFileName ->
+			Path = list_to_binary(garm_config:config_path()),
+			CertFile = <<Path/binary, "/", CertFileName/binary>>,
+			?LOG_INFO(#{description => "Load certificate", 
+				domain => DomainKey, security_scheme => SecScheme, 
+				cret_file => CertFile}),
+			case jose_jwk:from_pem_file(binary_to_list(CertFile)) of
+				{error, Reason} ->
+					{error, Reason};
+				JoseJwk ->
+					?LOG_INFO(#{description => "Load JWK from certificate", 
+						domain => DomainKey, security_scheme => SecScheme, 
+						jwk => JoseJwk, cret_file => CertFile}),
+					{ok, JoseJwk}
+			end
+	end.
 
 -doc """
 """.  
--spec is_authorized(Token :: binary(), Scopes :: list()) -> {true, #{}}.
-is_authorized(Token, Scopes) ->
-  
-	case validate_bearer(Token) of
-		{true, Jwt} ->
-			Ctx = Jwt#{<<"scopes">> => Scopes},
-
-			{true, Ctx};
-		false ->
-			false
+-spec is_authorized(cowboy_req:req(), map()) -> {true, term()} | false.
+is_authorized(Req, SecuritySchema)  ->
+	case garm_http_request:get_header_value(<<"Authorization">>, Req) of
+		undefined ->
+			?LOG_DEBUG(#{description => "Authorization header is undefined"}),
+			false;
+		Bearer ->
+			JWK = maps:get(~"authData", SecuritySchema),
+			Scope = maps:get(~"scope", SecuritySchema),
+			case validate_bearer(Bearer, JWK) of
+				{true, Jwt} ->
+					Ctx = Jwt#{<<"scope">> => Scope},
+					{true, Ctx};
+				false ->
+					false
+			end
 	end.
 
 %% =============================================================================
@@ -55,25 +86,19 @@ is_authorized(Token, Scopes) ->
 
 -doc """
 """.
--spec validate_bearer(binary()) -> tuple().
-validate_bearer(Bearer) ->
+-spec validate_bearer(binary(), tuple()) -> tuple().
+validate_bearer(Bearer, JWK) ->
 	Token = binary:replace(Bearer, <<"Bearer ">>, <<"">>),
-
 	?LOG_DEBUG(#{description => "Token to process", 
-							 token => Token}),
-	
-	JWK = garm_cache_manager:jwk(),
-	
+		token => Token}),
 	case jose_jwt:verify(JWK, Token) of
 		{true, {_, JWT}, JWS} ->
 			?LOG_DEBUG(#{description => "Verify token", 
-							jwt => JWT, jws => JWS}),
+				jwt => JWT, jws => JWS}),
 			maybe_expired(JWT);
-
 		Error ->
-			% invalid token, do something else
 			?LOG_ERROR(#{description => "The token is invalid", 
-                error => Error}),
+				error => Error}),
 			false
 	end.
 

@@ -43,20 +43,17 @@
 -spec domains() -> tuple().
 domains() ->
 	CfgFile = cfg_file(),
-
 	case filelib:is_file(CfgFile) of
 		true ->
 			Path = filename:dirname(CfgFile),
 			[Config] = yamerl_constr:file(CfgFile, [str_node_as_binary]),
-
-			?LOG_DEBUG(#{description => "Domains conf", 
-									domains => Config}),
-
+			%?LOG_INFO(#{description => "Domains conf", 
+			%	domains => Config}),
 			case lists:keyfind(~"domains", 1, Config) of
 				{_, Domains} ->
 					Domains0 = create_map(Domains),
-					?LOG_INFO(#{description => "Domains config was loaded",
-											domains_cfg => Domains0}),
+					?LOG_INFO(#{description => "Domains config was loaded", 
+						cfg_file => CfgFile, domains_cfg => Domains0}),
 					{Path, Domains0};
 				
 				false ->
@@ -72,13 +69,11 @@ domains() ->
 -spec config_path() -> tuple().
 config_path() ->
 	CfgFile = cfg_file(),
-
 	case filelib:is_file(CfgFile) of
 		true ->
 			Path = filename:dirname(CfgFile),
-
 			?LOG_NOTICE(#{description => "Path config", 
-									path => Path}),
+				path => Path}),
 			Path;
 
 		false ->
@@ -89,40 +84,40 @@ config_path() ->
 """.
 -spec domain_api(binary(), binary()) -> list().
 domain_api(Path, FileName) ->
-	FileName0 = list_to_binary([Path, <<"/">>, FileName, <<".yaml">>]),
+	FileName0 = list_to_binary([Path, ~"/", FileName, ~".yaml"]),
 	case filelib:is_file(FileName0) of
 		true ->
-			[Config] = yamerl_constr:file(FileName0, [{map_node_format, map}, str_node_as_binary]),
+			[ApiDef] = yamerl_constr:file(FileName0, [{map_node_format, map}, str_node_as_binary]),
 
-			?LOG_DEBUG(#{description => "Full api conf", 
-									full_api_def => Config}),
+			?LOG_DEBUG(#{description => "Open API definition", 
+				file => FileName0, api_def => ApiDef}),
 			
-			PathsCfg =
-			case maps:get(~"paths", Config, undefined) of
+			ApiPaths =
+			case maps:get(~"paths", ApiDef, undefined) of
 				undefined ->
-					?LOG_ERROR(#{description => "Not found 'paths' in file",
-											file => FileName0}),
+					?LOG_ERROR(#{description => "API Paths definition not found",
+						file => FileName0}),
 					error(paths_config_not_found);
 
 				Paths ->
-					?LOG_DEBUG(#{description => "API paths config was loaded",
-											paths_cfg => Paths}),
+					?LOG_DEBUG(#{description => "API Paths definition was loaded",
+						file => FileName0, paths_def => Paths}),
 					Paths
 			end,
 
-			ComponentsCgf =
-			case maps:get(~"components", Config, undefined) of
+			ComponentsCfg =
+			case maps:get(~"components", ApiDef, undefined) of
 				undefined ->
-					?LOG_ERROR(#{description => "Not found 'components' in file",
-												file => FileName0}),
-					error(components_config_not_found);
+					?LOG_WARNING(#{description => "API Components definition not found",
+						file => FileName0}),
+					#{};
 
 				Components ->
-					?LOG_DEBUG(#{description => "API components config was loaded",
-											paths_cfg => Components}),
+					?LOG_DEBUG(#{description => "API Components definition was loaded",
+						file => FileName0, components_cfg => Components}),
 					Components
 			end,
-			{PathsCfg, ComponentsCgf};
+			{ApiPaths, ComponentsCfg};
 
 		false ->
 			?LOG_ERROR(#{description => "Domain file not found",
@@ -134,23 +129,24 @@ domain_api(Path, FileName) ->
 """.
 -spec load_domain_cfg(binary(), binary(), binary()) -> map().
 load_domain_cfg(DomainKey, Path, FileName) ->
-	FileName0 = list_to_binary([Path, <<"/">>, FileName]),
+	FileName0 = list_to_binary([Path, ~"/", FileName]),
 
 	case filelib:is_file(FileName0) of
 		true ->
 			[Config] = yamerl_constr:file(FileName0, [{map_node_format, map}, str_node_as_binary]),
 
-			?LOG_DEBUG(#{description => "Domain conf file", 
-									file => FileName0,
-									cfg => Config}),
+			?LOG_DEBUG(#{description => "Domain config file", 
+				domain_key => DomainKey, file => FileName0, cfg => Config}),
 
 			case maps:get(~"operations", Config, undefined) of
 				undefined ->
-					error(config_domains_not_found);
+					?LOG_DEBUG(#{description => "Operations not found", 
+						domain_key => DomainKey, file => FileName0}),
+					#{};
 
 				OperationsCfg ->
-					?LOG_DEBUG(#{description => "Operations from domain config was loaded",
-											file => FileName0,operations => OperationsCfg}),
+					?LOG_DEBUG(#{description => "Operations config was loaded",
+						domain_key => DomainKey, file => FileName0, operations => OperationsCfg}),
 					set(DomainKey, OperationsCfg),
 					OperationsCfg
 			end;
@@ -208,8 +204,8 @@ create_map([{Key0 = ~"apiPort", Value} | T], Acc) ->
 	case Value of
 		N when is_integer(N) -> N;
 		S when is_list(S) -> 
-			S0 = binary:replace(S, ~"$(", <<>>),
-			S1 = binary:replace(S0, ~")", <<>>),
+			S0 = binary:replace(S, ~"${", <<>>),
+			S1 = binary:replace(S0, ~"}", <<>>),
 			Val = unicode:characters_to_list(S1),
 			list_to_integer(os:getenv(Val))
 	end,
@@ -217,28 +213,28 @@ create_map([{Key0 = ~"apiPort", Value} | T], Acc) ->
  	create_map(T, Acc0);
 
 create_map([{Key0 = ~"handler", Value} | T], Acc) ->
- 	Acc0 = Acc#{Key0 => binary_to_atom(Value)},
+ 	Acc0 = Acc#{Key0 => find_module(Value)},
  	create_map(T, Acc0);
 
 create_map([{Key0 = ~"validBody", Values} | T], Acc) ->
  	F = fun({Key, Val}, Aux) ->
-				Validator = binary_to_atom(Val),
+				Validator = find_module(Val),
  				maps:put(Key, Validator, Aux)
  		end,
  	Acc0 = Acc#{Key0 => lists:foldl(F, #{}, Values)},
 	create_map(T, Acc0);
 
 create_map([{Key0 = ~"authControl", Value} | T], Acc) ->
-	Acc0 = Acc#{Key0 => binary_to_atom(Value)},
+	Acc0 = Acc#{Key0 => find_module(Value)},
 	create_map(T, Acc0);
 
 create_map([{Key0 = ~"adapter", Value} | T], Acc) ->
-	Acc0 = Acc#{Key0 => binary_to_atom(Value)},
+	Acc0 = Acc#{Key0 => find_module(Value)},
 	create_map(T, Acc0);
 
 create_map([{Key0 = ~"validResponse", Values} | T], Acc) ->
  	F = fun({Key, Val}, Aux) ->
-				Validator = binary_to_atom(Val),
+				Validator = find_module(Val),
  				maps:put(Key, Validator, Aux)
  		end,
  	Acc0 = Acc#{Key0 => lists:foldl(F, #{}, Values)},
@@ -263,20 +259,20 @@ create_map(Val, _Acc) when is_binary(Val) ->
 """.
 -spec filter(file:name_all(), [string()], string()) -> [binary()].
 filter(Path, Files, ExtentionFile) ->
-  F = fun(V, Aux) ->
-         case string:find(V, ExtentionFile, leading) of
-           nomatch ->
-             Aux;
+	F = fun(V, Aux) -> 
+				case string:find(V, ExtentionFile, leading) of
+					nomatch -> 
+						Aux;
 
-           _ ->
-             File = list_to_binary([Path, <<"/">>, V]),
-						 ?LOG_INFO(#{description => "File was found", 
-						 						file => File}),
-             Aux0 = Aux ++ [File],
-             Aux0
-         end
-      end,
-  lists:foldl(F, [], Files).
+					_ ->
+						File = list_to_binary([Path, ~"/", V]),
+						?LOG_INFO(#{description => "File was found", 
+												file => File}),
+						Aux0 = Aux ++ [File],
+						Aux0
+				end
+	end,
+	lists:foldl(F, [], Files).
 
 -doc """
 """.
@@ -284,3 +280,16 @@ filter(Path, Files, ExtentionFile) ->
 cfg_file() ->
 	{ok, Value} = application:get_env(?APP, cfg_file),
 	Value.
+
+-spec find_module(binary()) -> {ok, atom()} | {error, atom()}.
+find_module(ModuleName) when is_binary(ModuleName) ->
+    case code:where_is_file(binary_to_list(ModuleName) ++ ".beam") of
+        non_existing ->
+            error(module_not_found);%{error, not_found};
+        FullPath ->
+            %% Extract the exact module name compiled inside the BEAM binary
+            case beam_lib:chunks(FullPath, [attributes]) of
+                {ok, {Module, _}} -> Module;
+                {error, beam_lib, _} -> error(module_not_found) %{error, invalid_beam}
+            end
+    end.
