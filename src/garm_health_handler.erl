@@ -23,7 +23,7 @@
 -moduledoc """
 """.
 
--include("http_commons.hrl").
+-include("http_elements.hrl").
 
 %% =============================================================================
 %% public functions

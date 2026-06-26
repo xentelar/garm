@@ -25,7 +25,7 @@
 
 -include_lib("kernel/include/logger.hrl").
 
--include("http_commons.hrl").
+-include("http_elements.hrl").
 
 -type req() :: cowboy_req:req().
 -type result() :: true | {false, iodata()}.
