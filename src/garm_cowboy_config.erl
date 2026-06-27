@@ -98,7 +98,19 @@ build_paths(Path, DomainKey, ValidBody, ValidResponse) ->
 """.
 -spec build_methods_cfg(map(), map(), map()) -> map().
 build_methods_cfg(MethodsCfg, ComponentsCfg, ValidBody) ->
-  F = fun(Method, Cfg, Acc) ->
+  F = fun(Method, MethodCfg, Acc) ->
+        Cfg = 
+        case maps:get(~"parameters", MethodCfg, undefined) of
+          undefined ->
+            MethodCfg;
+          Parameters ->
+            D = fun(Parameter) ->
+                  Name = maps:get(~"name", Parameter),
+                  Parameter#{~"name" => to_atom(Name)}
+            end,
+            Parameters0 = lists:map(D, Parameters),
+            MethodCfg#{~"parameters" => Parameters0}
+        end,
         case maps:get(~"requestBody", Cfg, undefined) of
           undefined ->
             Acc#{Method => Cfg};
@@ -241,3 +253,13 @@ rebuild_security(MethodsCfg, SecurityCfg) ->
         end
   end,
   maps:fold(F, #{}, MethodsCfg).
+
+-doc """
+""".
+-spec to_atom(binary()) -> atom().
+to_atom(Name) ->
+  try binary_to_existing_atom(Name, utf8) of
+    Atom -> Atom
+  catch error:badarg ->
+    binary_to_atom(Name, utf8)
+  end.

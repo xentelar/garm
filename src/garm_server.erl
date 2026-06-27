@@ -83,21 +83,6 @@ init_domains() ->
 
   maps:foreach(F, Domains).
 
-% -doc """
-% """.
-% -spec init_cfg() -> term().
-% init_cfg() ->
-%   Path = garm_config:config_path(),
-%   Files = garm_config:list_files(Path, <<".pem">>),
-%   ?LOG_NOTICE(#{description => "Load certs", crets => Files}),
-%   ets:new(certificates, [public, named_table, {read_concurrency, true}]),
-%   F = fun(CertPath) ->
-%     JWK = jose_jwk:from_pem_file(binary_to_list(CertPath)),
-%     ?LOG_NOTICE(#{description => "Load JWK", jwk => JWK}),
-%     ets:insert(certificates, {jwk, JWK})
-%   end,
-%   lists:foreach(F, Files).
-
 -doc """
 """.
 -spec load_domain_cfg(binary(), map(), binary()) -> term().

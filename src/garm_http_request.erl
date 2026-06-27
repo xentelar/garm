@@ -149,8 +149,8 @@ get_query_value(Name, Req) ->
 -spec get_binding_value(any(), cowboy_req:req()) ->
   {any(), cowboy_req:req()} | {error, any(), cowboy_req:req()}.
 get_binding_value(Name, Req) ->
-  Name0 = to_binding(Name),
-  cowboy_req:binding(Name0, Req, undefined).
+  %Name0 = to_binding(Name),
+  cowboy_req:binding(Name, Req, undefined).
 
 -doc """
 """.
@@ -215,9 +215,9 @@ to_header(Name) ->
 to_qs(Name) ->
   garm_utils:to_binary(Name).
 
--doc """
-""".
--spec to_binding(iodata() | atom() | number()) -> atom().
-to_binding(Name) ->
-  Prepared = garm_utils:to_binary(Name),
-  binary_to_atom(Prepared, utf8).
+% -doc """
+% """.
+% -spec to_binding(iodata() | atom() | number()) -> atom().
+% to_binding(Name) ->
+%   Prepared = garm_utils:to_binary(Name),
+%   binary_to_atom(Prepared, utf8).
