@@ -166,7 +166,8 @@ start_security(DomainKey, DomainCfg) ->
   case maps:get(~"security", DomainCfg, undefined) of
     undefined ->
       ?LOG_INFO(#{description => "Security not defined", 
-        domain_key => DomainKey});
+        domain_key => DomainKey}),
+      DomainCfg;
     SecurityDefs ->
       F = fun(SecScheme, SecurityDef, Acc) ->
             case maps:get(~"authControl", SecurityDef, undefined) of
