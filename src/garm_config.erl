@@ -83,8 +83,8 @@ config_path() ->
 -doc """
 """.
 -spec domain_api(binary(), binary()) -> list().
-domain_api(Path, FileName) ->
-	FileName0 = list_to_binary([Path, ~"/", FileName, ~".yaml"]),
+domain_api(FilPath, FileName) ->
+	FileName0 = list_to_binary([FilPath, ~"/", FileName, ~".yaml"]),
 	case filelib:is_file(FileName0) of
 		true ->
 			[ApiDef] = yamerl_constr:file(FileName0, [{map_node_format, map}, str_node_as_binary]),
@@ -128,8 +128,8 @@ domain_api(Path, FileName) ->
 -doc """
 """.
 -spec load_domain_cfg(binary(), binary(), binary()) -> map().
-load_domain_cfg(DomainKey, Path, FileName) ->
-	FileName0 = list_to_binary([Path, ~"/", FileName]),
+load_domain_cfg(DomainKey, FilPath, FileName) ->
+	FileName0 = list_to_binary([FilPath, ~"/", FileName]),
 
 	case filelib:is_file(FileName0) of
 		true ->

@@ -47,42 +47,51 @@
 -doc """
 """.
 -spec get_api_paths({binary(), binary()}, map()) ->  protocol().
-get_api_paths({Path, DomainKey}, DomainCfg) ->
+get_api_paths({FileDomainPath, DomainKey}, DomainCfg) ->
   
-  Handler = maps:get(<<"handler">>, DomainCfg, handler_undefined),
+  Handler = maps:get(<<"handler">>, DomainCfg),
   ValidBody = maps:get(<<"validBody">>, DomainCfg, ?VALID_BODY_UNDEF),
   ValidResponse = maps:get(<<"validResponse">>, DomainCfg, ?VALID_RPS_UNDEF),
   SecurityCfg = maps:get(<<"security">>, DomainCfg, ?SECURITY_CFG_UNDEF),
-  Adapter = maps:get(<<"adapter">>, DomainCfg, adapter_undefined),
+  Adapter = maps:get(<<"adapter">>, DomainCfg),
+  RootApiPath = maps:get(<<"rootApiPath">>, DomainCfg, undefined),
   
-  Paths = build_paths(Path, DomainKey, ValidBody, ValidResponse),
+  Paths = build_paths(FileDomainPath, DomainKey, ValidBody, ValidResponse),
   [
     {'_',
-      [build_router_conf(ApiPath, Handler, MethodsCfg, ValidBody, SecurityCfg, Adapter, ValidResponse) 
+      [build_router_conf(ApiPath, Handler, MethodsCfg, ValidBody, SecurityCfg, Adapter, ValidResponse, RootApiPath) 
         || {ApiPath, MethodsCfg} <- Paths]
     }
   ].
 
 -doc """
 """.
--spec build_router_conf(binary(), atom(), map(), map(), map(), atom(), map()) -> tuple().
-build_router_conf(ApiPath, Handler, MethodsCfg, ValidBody, SecurityCfg, Adapter, ValidResponse) ->
+-spec build_router_conf(binary(), atom(), map(), map(), map(), atom(), map(), binary()) -> tuple().
+build_router_conf(ApiPath, Handler, MethodsCfg, ValidBody, SecurityCfg, Adapter, ValidResponse, RootApiPath) ->
   ApiPath0 = binary:replace(ApiPath, <<"}">>, <<"">>, [global]),
   ApiPath1 = binary:replace(ApiPath0, <<"{">>, <<":">>, [global]),
+
+  ApiPath2 = case RootApiPath of
+    undefined -> ApiPath1;
+    RootBasePath0 -> <<"/", RootBasePath0/binary, ApiPath1/binary>>
+  end,
+
+  ?LOG_INFO(#{description => "API Path loaded", 
+    api_path => ApiPath2}),
 
   MethodsCfg0 = rebuild_security(MethodsCfg, SecurityCfg),
 
   ?LOG_DEBUG(#{description => "Routing Config", 
-    path => ApiPath1, handler => Handler,
+    path => ApiPath2, handler => Handler,
     state => {MethodsCfg0, ValidBody, SecurityCfg, Adapter, ValidResponse}}),
 
-  {ApiPath1, Handler, {MethodsCfg0, ValidBody, Adapter, ValidResponse}}.
+  {ApiPath2, Handler, {MethodsCfg0, ValidBody, Adapter, ValidResponse}}.
 
 -doc """
 """.
 -spec build_paths(binary(), binary(), map(), map()) -> list().
-build_paths(Path, DomainKey, ValidBody, ValidResponse) ->
-  {ApiPathsCfg, ComponentsCfg} = garm_config:domain_api(Path, DomainKey),
+build_paths(FileDomainPath, DomainKey, ValidBody, ValidResponse) ->
+  {ApiPathsCfg, ComponentsCfg} = garm_config:domain_api(FileDomainPath, DomainKey),
 
   F = fun(ApiPath, MethodsCfg, Acc) ->
         MethodsCfg0 = build_methods_cfg(MethodsCfg, ComponentsCfg, ValidBody),

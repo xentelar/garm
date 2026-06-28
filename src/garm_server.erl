@@ -59,16 +59,16 @@ init_domains() ->
   NetOpts = [],
   IP = {0,0,0,0},
 
-  {Path, Domains} = garm_config:domains(),
+  {FileDomainPath, Domains} = garm_config:domains(),
 
   F = fun(DomainKey, DomainCfg) ->
         Port = maps:get(<<"apiPort">>, DomainCfg),
-        OperationsCfg = load_domain_cfg(DomainKey, DomainCfg, Path),
+        OperationsCfg = load_domain_cfg(DomainKey, DomainCfg, FileDomainPath),
         start_adapter(DomainKey, DomainCfg, OperationsCfg),
         DomainCfg0 = start_security(DomainKey, DomainCfg),
         {Transport, TransportOpts} = socket_transport(IP, Port, NetOpts),
         %ExtraOpts = maps:get(cowboy_extra_opts, Params, []),
-        CowboyOpts = api_config({Path, DomainKey}, DomainCfg0),
+        CowboyOpts = api_config({FileDomainPath, DomainKey}, DomainCfg0),
         case Transport of
           ssl ->
             cowboy:start_tls(DomainKey, TransportOpts, CowboyOpts),
@@ -103,14 +103,14 @@ load_domain_cfg(DomainKey, DomainCfg, Path) ->
 -doc """
 """.
 -spec api_config({binary(), binary()}, map()) -> map().
-api_config({Path, DomainKey}, DomainCfg) ->
-  #{env => default_dispatch({Path, DomainKey}, DomainCfg)}.
+api_config({FileDomainPath, DomainKey}, DomainCfg) ->
+  #{env => default_dispatch({FileDomainPath, DomainKey}, DomainCfg)}.
 
 -doc """
 """.
 -spec default_dispatch({binary(), binary()}, map()) -> map().
-default_dispatch({Path, DomainKey}, DomainCfg) ->
-  ApiPaths = garm_cowboy_config:get_api_paths({Path, DomainKey}, DomainCfg),
+default_dispatch({FileDomainPath, DomainKey}, DomainCfg) ->
+  ApiPaths = garm_cowboy_config:get_api_paths({FileDomainPath, DomainKey}, DomainCfg),
   #{dispatch => cowboy_router:compile(ApiPaths)}.
 
 -doc """
