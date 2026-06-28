@@ -15,7 +15,6 @@
     os_mon,
     %debugger,
     yamerl,
-    cowlib,
     cowboy,
     jose,
     cache,

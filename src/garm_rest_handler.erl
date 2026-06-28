@@ -414,7 +414,7 @@ dispatch_to_adapter(DomainKey, Adapter, OperationID, Populated) ->
       ?LOG_DEBUG(#{description => "Adapter errors", 
         reason => Reason, adapter => Adapter, callback => process, 
         args => [DomainKey, OperationID, Populated]}),
-      garm_http_response:build(?INTERNAL_GATEWAY_ERROR_HTTP_CODE, #{});
+      garm_http_response:build(?BAD_GATEWAY_HTTP_CODE, #{});
     {Code, Headers} ->
       {Code, Headers};
     {Code, Headers, Body} ->
@@ -436,7 +436,7 @@ reply_response(Response, Req0, State = #state{operation_id = OperationID}) ->
     {error, Reason} ->
       ?LOG_DEBUG(#{description => "Unable to process response", 
         op_id => OperationID, reason => Reason}), %state => State}),
-      Req2 = cowboy_req:reply(?INTERNAL_GATEWAY_ERROR_HTTP_CODE, #{}, Req0),
+      Req2 = cowboy_req:reply(?BAD_GATEWAY_HTTP_CODE, #{}, Req0),
       {stop, Req2, State};
     {error, HttpCode, Reason} ->
       ?LOG_DEBUG(#{description => "Unable to process response", 
