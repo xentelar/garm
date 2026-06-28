@@ -304,7 +304,7 @@ valid_entity_length(Req, #state{origin = Origin} = State) ->
 -spec content_types_provided(Req :: req(), State :: state()) ->
   {Value :: content_types(), Req :: req(), State :: state()}.
 content_types_provided(Req, State) ->
-  {ContentTypes, Req1} = content_types(Req, State),
+  {ContentTypes, Req1} = content_types(Req, State, content_types_provided),
   ?LOG_DEBUG(#{description => "Content types provided", 
     domain => maps:get(ref, Req), operation_id => State#state.operation_id,
     method => cowboy_req:method(Req1), content_types_provided => ContentTypes}),
@@ -315,7 +315,7 @@ content_types_provided(Req, State) ->
 -spec content_types_accepted(Req :: req(), State :: state()) ->
   {Value :: content_types(), Req :: req(), State :: state()}.
 content_types_accepted(Req, State) ->
-  {ContentTypes, Req1} = content_types(Req, State),
+  {ContentTypes, Req1} = content_types(Req, State, content_types_accepted),
   ?LOG_DEBUG(#{description => "Content types accepted", 
     domain => maps:get(ref, Req), operation_id => State#state.operation_id,
     method => cowboy_req:method(Req1), content_types_accepted => ContentTypes}),
@@ -445,13 +445,16 @@ reply_response(Response, Req0, State = #state{operation_id = OperationID}) ->
       {stop, Req2, State}
   end.
 
--spec content_types(Req :: req(), State :: state()) ->
+-spec content_types(Req :: req(), State :: state(), Step :: content_types_provided | content_types_accepted) ->
   {Value :: content_types(), Req :: req(), State :: state()}.
-content_types(Req, #state{origin = Origin, cfg = Cfg}) ->
+content_types(Req, #state{origin = Origin, cfg = Cfg}, Step) ->
   Req0 = garm_http_response:resp_headers(Req, Origin),
   case maps:get(<<"requestBody">>, Cfg, undefined) of
     undefined ->
-      {[{{<<"*">>, <<"*">>, '*'}, process_request}], Req};
+			case Step of
+				content_types_provided -> {[{{<<"*">>, <<"*">>, '*'}, process_request}], Req};
+				content_types_accepted -> {[{'*', process_request}], Req}
+			end;
     RequestBody ->
       Contents = maps:get(<<"content">>, RequestBody),
       ContentsKeys = maps:keys(Contents),

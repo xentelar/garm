@@ -46,12 +46,9 @@ init(ObjectsDef) ->
 validate(ReqBody, {Schema, JesseState}, Required) ->
 	try
 
-		?LOG_INFO(#{description => "Validattion parameters",
+		?LOG_DEBUG(#{description => "Validattion parameters",
 			req_body => ReqBody, required => Required,
-			validator_schema => Schema}),
-
-		?LOG_DEBUG(#{description => "Schema validattion",
-			jesse_state => JesseState}),
+			validator_schema => Schema, jesse_state => JesseState}),
 
 		case {byte_size(ReqBody), Required} of
 			{0, false} ->
