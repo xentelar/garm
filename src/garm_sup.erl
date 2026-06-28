@@ -53,13 +53,13 @@ child_spec() = #{id => child_id(),       % mandatory
 """.
 -spec init(term()) -> term().
 init([]) ->
-    SupFlags = #{
-        strategy => one_for_all,
-        intensity => 0,
-        period => 1
-    },
-    ChildSpecs = [],
-    {ok, {SupFlags, ChildSpecs}}.
+	SupFlags = #{
+			strategy => one_for_all,
+			intensity => 0,
+			period => 1
+	},
+	ChildSpecs = [],
+	{ok, {SupFlags, ChildSpecs}}.
 
 %% =============================================================================
 %% private functions
