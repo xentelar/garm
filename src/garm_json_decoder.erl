@@ -17,11 +17,10 @@
 %% under the License.
 %%
 %% -----------------------------------------------------------------------------
-
--module(garm_application_json).
+-module(garm_json_decoder).
 
 -moduledoc """
-This module only decode and validate a json body
+This module only decode a json body
 """.
 
 -behaviour(garm_validator).
@@ -36,43 +35,35 @@ This module only decode and validate a json body
 -export([validate/3]).
 
 -spec init(ObjectsDef :: map()) -> {ok, term()} | {error, term()}.
-init(ObjectsDef) -> 
-	C = #{~"components" => ObjectsDef},
-  JesseState = jesse_state:new(C, [{default_schema_ver, <<"http://json-schema.org/draft-04/schema#">>}]),
-	{ok, JesseState}.
+init(_ObjectsDef) -> 
+	?LOG_INFO(#{description => "Start application/json contect type"}),
+	{ok, ok}.
 
 -doc """
 """.
 -spec validate(binary() | map(), term(), true | false) -> {ok, binary() | map()} | {error, term()}.
-validate(ReqBody, {Schema, JesseState}, Required) ->
+validate(ReqBody, _, _Required) ->
 	try
 
-		?LOG_DEBUG(#{description => "Validation parameters",
-			req_body => ReqBody, required => Required,
-			validator_schema => Schema, jesse_state => JesseState}),
+		?LOG_DEBUG(#{description => "Validation request body",
+			req_body => ReqBody}),
 
-		case {byte_size(ReqBody), Required} of
-			{0, false} ->
+		case byte_size(ReqBody) of
+			0 ->
+				?LOG_ERROR(#{description => "Validation error, request body is empty",
+					req_body => ReqBody}),
 				{ok, #{}};
 
-			{0, true} ->
-				?LOG_ERROR(#{description => "Validation error",
-					req_body => ReqBody, required => Required}),
-				{error, empty_body};
-
-			{Size, _} when Size > 0 ->
+			Size when Size > 0 ->
 				case thoas:decode(ReqBody) of
 					{ok, JsonBody} ->
-						ObjectDef = maps:get(~"schema", Schema),
-						jesse_schema_validator:validate_with_state(ObjectDef, JsonBody, JesseState),
-						?LOG_DEBUG(#{description => "Validation ",
-							req_body => ReqBody, required => Required,
-							validator_schema => Schema, jesse_state => JesseState}),
+						?LOG_DEBUG(#{description => "Validation request body is ok",
+							req_body => ReqBody}),
 						{ok, JsonBody};
 					{error, Reason} ->
-						?LOG_ERROR(#{description => "Validation error",
-							req_body => ReqBody, required => Required, reason => Reason}),
-						{error, Reason}
+						?LOG_ERROR(#{description => "Validation error, request body is not json",
+							req_body => ReqBody, reason => Reason}),
+						{ok, #{}}
 				end
 		end
 
@@ -80,7 +71,7 @@ validate(ReqBody, {Schema, JesseState}, Required) ->
 		Class:Reason0:_Stacktrace ->
 			?LOG_ERROR(#{description => "Validation error",
 				error => Class, reason => Reason0}),
-			{error, Reason0}
+			{ok, #{}}
 	end.
 
 %% =============================================================================

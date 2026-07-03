@@ -71,7 +71,7 @@ prepare_response({Code, Headers, no_response}, MethodCfg, ValidResponse)
 
 prepare_response({Code, Headers, BodyRps}, MethodCfg, ValidResponse) 
 															when is_binary(BodyRps) andalso map_size(ValidResponse)>0 ->
-	%?LOG_INFO(#{description => "Validattion response parameters",
+	%?LOG_INFO(#{description => "Validation response parameters",
 	%		req_body => BodyRps, headers => Headers, http_code => Code,
 	%		validator_schema => ValidResponse, method_cfg => MethodCfg}),
 	case maps:get(~"responses", MethodCfg, undefined) of
