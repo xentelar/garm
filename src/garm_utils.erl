@@ -63,8 +63,8 @@ to_list(V) -> binary_to_list(to_binary(V)).
 to_float(V) ->
   Data = iolist_to_binary([V]),
   case binary:split(Data, <<$.>>) of
-    [Data] ->
-      binary_to_integer(Data);
+    [IntPart] ->
+      binary_to_integer(IntPart);
     [<<>>, _] ->
       binary_to_float(<<$0, Data/binary>>);
     _ ->

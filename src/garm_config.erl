@@ -200,15 +200,7 @@ create_map([], Acc) ->
 	Acc;
 
 create_map([{Key0 = ~"apiPort", Value} | T], Acc) ->
-	Value0 =
-	case Value of
-		N when is_integer(N) -> N;
-		S when is_list(S) -> 
-			S0 = binary:replace(S, ~"${", <<>>),
-			S1 = binary:replace(S0, ~"}", <<>>),
-			Val = unicode:characters_to_list(S1),
-			list_to_integer(os:getenv(Val))
-	end,
+	Value0 = get_int_from_env(Value),
  	Acc0 = Acc#{Key0 => Value0},
  	create_map(T, Acc0);
 
@@ -293,3 +285,15 @@ find_module(ModuleName) when is_binary(ModuleName) ->
                 {error, beam_lib, _} -> error(module_not_found) %{error, invalid_beam}
             end
     end.
+
+-doc """
+""".
+-spec get_int_from_env(pos_integer() | binary()) -> pos_integer().
+get_int_from_env(Value) ->
+	case Value of
+		N when is_integer(N) -> N;
+		S when is_binary(S) -> 
+			S0 = binary:replace(S, [~"${", ~"}"], <<>>, [global]),
+			Val = unicode:characters_to_list(S0),
+			list_to_integer(os:getenv(Val))
+	end.
