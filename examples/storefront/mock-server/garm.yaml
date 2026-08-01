@@ -1,0 +1,23 @@
+info:
+  title: API Gateway
+  version: 1.0.0
+  description: Storefront Mock Server
+domains:
+- storefront:
+    apiPort: 9000
+    ssl: false
+    handler: garm_rest_handler
+    adapter: garm_storefront_mock_adpter
+    security:
+      AgentAuth:
+        authControl: garm_jwt_decoder
+      ClientAuth:
+        authControl: garm_jwt_decoder
+      ApiKey:
+        authControl: garm_token_auth
+    validBody:
+      application/json: garm_application_json
+      text/plain: garm_application_json
+    validResponse:
+      application/json: garm_application_json
+      text/plain: garm_application_json

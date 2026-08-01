@@ -1,0 +1,25 @@
+info:
+  title: API Gateway
+  version: 1.0.0
+  description: Garm API Gateway Config
+domains:
+- storefront:
+    apiPort: 8000
+    ssl: false
+    handler: garm_rest_handler
+    adapter: garm_http_reverse_proxy_adapter
+    cfg: storefront.cfg.yaml
+    security:
+      AgentAuth:
+        authControl: garm_jwt_decoder
+      ClientAuth:
+        authControl: garm_jwt_auth
+        certificate: auth-key.pem
+      ApiKey:
+        authControl: garm_token_auth
+    validBody:
+      application/json: garm_application_json
+      text/plain: garm_application_json
+    validResponse:
+      application/json: garm_application_json
+      text/plain: garm_application_json

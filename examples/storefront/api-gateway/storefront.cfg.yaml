@@ -1,0 +1,110 @@
+info:
+  version: 1.0.0
+  title: Reverse proxy config
+  description: Reverse proxy config.
+operations:
+- createUser:
+    host: localhost:9000
+    request: '/v1/auth/register'
+    protocol: https
+    method: POST
+    timeout: 120000
+    max_connections: 100
+- login:
+    host: localhost:9000
+    request: '/v1/auth/login'
+    protocol: https
+    method: POST
+    timeout: 120000
+    max_connections: 100
+- findProducts:
+    host: localhost:9000
+    request: '/v1/products'
+    protocol: https
+    method: GET
+    timeout: 120000
+    max_connections: 100
+- getProduct:
+    host: localhost:9000
+    request: '/v1/products/{id}'
+    protocol: http
+    method: GET
+    timeout: 120000
+    max_connections: 100
+- getCart:
+    host: localhost:9000
+    request: '/v1/cart'
+    protocol: http
+    method: GET
+    timeout: 120000
+    max_connections: 100
+- addItem:
+    host: localhost:9000
+    request: '/v1/cart/items'
+    protocol: http
+    method: PUT
+    timeout: 120000
+    max_connections: 100
+- deleteItem:
+    host: localhost:9000
+    request: '/v1/cart/items'
+    protocol: http
+    method: DELETE
+    timeout: 120000
+    max_connections: 100
+- checkout:
+    host: localhost:9000
+    request: '/v1/checkout'
+    protocol: http
+    method: POST
+    timeout: 120000
+    max_connections: 100
+- findOrders:
+    host: localhost:9000
+    request: '/v1/orders'
+    protocol: http
+    method: GET
+    timeout: 120000
+    max_connections: 100
+- getOrder:
+    host: localhost:9000
+    request: '/v1/orders/{orderId}'
+    protocol: http
+    method: GET
+    timeout: 120000
+    max_connections: 100
+- deleteOrder:
+    host: localhost:9000
+    request: '/v1/orders/{orderId}'
+    protocol: http
+    method: DELETE
+    timeout: 120000
+    max_connections: 100
+- getAddress:
+    host: localhost:9000
+    request: '/v1/addresses'
+    protocol: http
+    method: GET
+    timeout: 120000
+    max_connections: 100
+- addAddress:
+    host: localhost:9000
+    request: '/v1/addresses'
+    protocol: http
+    method: POST
+    timeout: 120000
+    max_connections: 100
+- updateAddress:
+    host: localhost:9000
+    request: '/v1/addresses'
+    protocol: http
+    method: PATCH
+    timeout: 120000
+    max_connections: 100
+- deleteAddress:
+    host: localhost:9000
+    request: '/v1/addresses'
+    protocol: http
+    method: DELETE
+    timeout: 120000
+    max_connections: 100

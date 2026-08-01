@@ -1,0 +1,23 @@
+%% -*- mode: erlang;erlang-indent-level: 4;indent-tabs-mode: nil -*-
+%% ex: ts=4 sw=4 ft=erlang et
+%%
+
+Vsn = erlang:system_info(otp_release),
+
+SetSrcDirs = fun
+    (V, Acc) when V >= "25" ->
+        Default = ["src"],
+        SrcDirs =
+            case lists:keyfind(src_dirs, 1, Acc) of
+                {src_dirs, Val} ->
+                    Val ++ ["examples"];
+                false ->
+                    Default ++ ["examples"]
+            end,
+        lists:keystore(src_dirs, 1, Acc, {src_dirs, SrcDirs});
+
+    (V, _) ->
+        exit("OTP version " ++ V ++ " not supported by Erlink.")
+end,
+
+SetSrcDirs(Vsn, CONFIG).
