@@ -20,9 +20,6 @@
 
 -module(garm_cowboy_config).
 
--moduledoc """
-""".
-
 -include_lib("kernel/include/logger.hrl").
 
 -include("garm.hrl").
@@ -38,14 +35,15 @@
 
 -export_type([init_opts/0]).
 
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 %% public functions
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 
 -export([get_api_paths/2]).
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec get_api_paths({binary(), binary()}, map()) ->  protocol().
 get_api_paths({FileDomainPath, DomainKey}, DomainCfg) ->
   
@@ -64,8 +62,9 @@ get_api_paths({FileDomainPath, DomainKey}, DomainCfg) ->
     }
   ].
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec build_router_conf(binary(), atom(), map(), map(), map(), atom(), map(), binary()) -> tuple().
 build_router_conf(ApiPath, Handler, MethodsCfg, ValidBody, SecurityCfg, Adapter, ValidResponse, RootApiPath) ->
   ApiPath0 = binary:replace(ApiPath, <<"}">>, <<"">>, [global]),
@@ -87,8 +86,9 @@ build_router_conf(ApiPath, Handler, MethodsCfg, ValidBody, SecurityCfg, Adapter,
 
   {ApiPath2, Handler, {MethodsCfg0, ValidBody, Adapter, ValidResponse}}.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec build_paths(binary(), binary(), map(), map()) -> list().
 build_paths(FileDomainPath, DomainKey, ValidBody, ValidResponse) ->
   {ApiPathsCfg, ComponentsCfg} = garm_config:domain_api(FileDomainPath, DomainKey),
@@ -103,30 +103,31 @@ build_paths(FileDomainPath, DomainKey, ValidBody, ValidResponse) ->
 
   maps:fold(F, [], ApiPathsCfg).
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec build_methods_cfg(map(), map(), map()) -> map().
 build_methods_cfg(MethodsCfg, ComponentsCfg, ValidBody) ->
   F = fun(Method, MethodCfg, Acc) ->
         Cfg = 
-        case maps:get(~"parameters", MethodCfg, undefined) of
+        case maps:get(<<"parameters">>, MethodCfg, undefined) of
           undefined ->
             MethodCfg;
           Parameters ->
             D = fun(Parameter) ->
-                  Name = maps:get(~"name", Parameter),
-                  Parameter#{~"name" => to_atom(Name)}
+                  Name = maps:get(<<"name">>, Parameter),
+                  Parameter#{<<"name">> => to_atom(Name)}
             end,
             Parameters0 = lists:map(D, Parameters),
-            MethodCfg#{~"parameters" => Parameters0}
+            MethodCfg#{<<"parameters">> => Parameters0}
         end,
-        case maps:get(~"requestBody", Cfg, undefined) of
+        case maps:get(<<"requestBody">>, Cfg, undefined) of
           undefined ->
             Acc#{Method => Cfg};
 
           RequestBody ->
             RequestBody0 = find_content_types(RequestBody, ComponentsCfg),
-            ContentTypes = maps:get(~"content", RequestBody0),
+            ContentTypes = maps:get(<<"content">>, RequestBody0),
             F = fun(ContentType, Schema, AccCTs) ->
                   case maps:get(ContentType, ValidBody, undefined) of
                     undefined ->
@@ -141,8 +142,8 @@ build_methods_cfg(MethodsCfg, ComponentsCfg, ValidBody) ->
                   end
             end,
             ContentTypes0 = maps:fold(F, #{}, ContentTypes),
-            RequestBody1 = RequestBody0#{~"content" => ContentTypes0},
-            Cfg0 = Cfg#{~"requestBody" => RequestBody1},
+            RequestBody1 = RequestBody0#{<<"content">> => ContentTypes0},
+            Cfg0 = Cfg#{<<"requestBody">> => RequestBody1},
             ?LOG_DEBUG(#{description => "Method Config", 
               method => Method, config => Cfg0}),
             Acc#{Method => Cfg0}
@@ -151,13 +152,14 @@ build_methods_cfg(MethodsCfg, ComponentsCfg, ValidBody) ->
 
   maps:fold(F, #{}, MethodsCfg).
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec find_content_types(map(), map()) -> map().
 find_content_types(RequestBody, ComponentsCfg) ->
-  case maps:get(~"$ref", RequestBody, undefined) of
+  case maps:get(<<"$ref">>, RequestBody, undefined) of
     undefined ->
-      case maps:get(~"content", RequestBody, undefined) of
+      case maps:get(<<"content">>, RequestBody, undefined) of
         undefined ->
           error(no_content_or_ref);
         _ContentTypes ->
@@ -170,7 +172,7 @@ find_content_types(RequestBody, ComponentsCfg) ->
       RequestBodySchema] = binary:split(Ref, <<"/">>, [global]),
       RequestBodySchemas = maps:get(<<"requestBodies">>, ComponentsCfg, #{}),
       SchemaDef = maps:get(RequestBodySchema, RequestBodySchemas, #{}),
-      case maps:get(~"content", SchemaDef, undefined) of
+      case maps:get(<<"content">>, SchemaDef, undefined) of
         undefined ->
           error(no_content_or_ref);
         _ContentTypes ->
@@ -178,26 +180,28 @@ find_content_types(RequestBody, ComponentsCfg) ->
       end
   end.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec build_rps_cfg(map(), map(), map()) -> map().
 build_rps_cfg(MethodsCfg, ComponentsCfg, ValidResponse) ->
   F = fun(Method, Cfg, Acc) ->
-        case maps:get(~"responses", Cfg, undefined) of
+        case maps:get(<<"responses">>, Cfg, undefined) of
           undefined ->
             error(no_responses);
 
           Responses ->
             Responses0 = find_rps_content_types(Responses, ComponentsCfg, ValidResponse),
-            Cfg0 = Cfg#{~"responses" => Responses0},
+            Cfg0 = Cfg#{<<"responses">> => Responses0},
             Acc#{Method => Cfg0}
         end
     end,
 
   maps:fold(F, #{}, MethodsCfg).
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec find_rps_content_types(map(), map(), map()) -> map().
 find_rps_content_types(Responses, ComponentsCfg, ValidResponse) ->
   F = fun(Key, Response, Acc) ->
@@ -205,11 +209,12 @@ find_rps_content_types(Responses, ComponentsCfg, ValidResponse) ->
   end,
   maps:fold(F, #{}, Responses).
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec rebuild_response(map(), map(), map()) -> map().
 rebuild_response(Response, ComponentsCfg, ValidResponse) ->
-  case maps:get(~"content", Response, undefined) of
+  case maps:get(<<"content">>, Response, undefined) of
     undefined ->
       Response;
     ContentTypes ->
@@ -227,17 +232,18 @@ rebuild_response(Response, ComponentsCfg, ValidResponse) ->
             end
       end,
       ContentTypes0 = maps:fold(F, #{}, ContentTypes),
-      Response#{~"content" => ContentTypes0}
+      Response#{<<"content">> => ContentTypes0}
   end.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec rebuild_security(map(), map()) -> map().
 rebuild_security(MethodsCfg, SecurityCfg) ->
   F = fun(Method, MethodCfg, Acc) ->
         ?LOG_DEBUG(#{description => "Method Config", 
           methods => Method, methods_cfg => MethodCfg, sec_cfg => SecurityCfg}),
-        case maps:get(~"security", MethodCfg, undefined) of
+        case maps:get(<<"security">>, MethodCfg, undefined) of
           undefined -> 
             Acc#{Method => MethodCfg};
           SecuritySchemas ->
@@ -250,21 +256,22 @@ rebuild_security(MethodsCfg, SecurityCfg) ->
                       error(security_schema_undef);
                     SecSchemaDef ->
                       ScopeNames = maps:get(SecSchemaName, SecuritySchema),
-                      SecSchemaDef0 = SecSchemaDef#{~"scope" => ScopeNames},
+                      SecSchemaDef0 = SecSchemaDef#{<<"scope">> => ScopeNames},
                       ?LOG_DEBUG(#{description => "Final Security Schema", 
                         security_schema => #{SecSchemaName => SecSchemaDef0}}),
                       #{SecSchemaName => SecSchemaDef0}
                   end
             end,
             SecuritySchemas0 = lists:map(P, SecuritySchemas),
-            MethodCfg0 = MethodCfg#{~"security" => SecuritySchemas0},
+            MethodCfg0 = MethodCfg#{<<"security">> => SecuritySchemas0},
             Acc#{Method => MethodCfg0}
         end
   end,
   maps:fold(F, #{}, MethodsCfg).
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec to_atom(binary()) -> atom().
 to_atom(Name) ->
   try binary_to_existing_atom(Name, utf8) of

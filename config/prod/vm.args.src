@@ -2,18 +2,18 @@
 ## Distributed Erlang (disterl)
 ## -----------------------------------------------------------------------------
 
--name garm@127.0.0.1
+-name ${ERLANG_NODENAME}
 
 ## Cookie for disterl (used for remote_console only)
 -setcookie garm
 
 ## Explicit connections only (Deprecated in latest versions)
--connect_all false
--auto_connect never
+#-connect_all false
+#-dist_auto_connect never
 
 ## Disable disterl
--start_epmd false
--hidden
+#-start_epmd false
+#-hidden
 
 ## Increase distribution port buffer size.
 ## +zdbbl 32768

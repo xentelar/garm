@@ -20,28 +20,27 @@
 
 -module(garm_http_reverse_proxy_adapter).
 
--moduledoc """
-""".
+-behaviour(garm_adapter).
 
 -include_lib("kernel/include/logger.hrl").
 
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 %% public functions
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 
 -export([start/2]).
 -export([process/3]).
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec start(binary(), map()) -> term().
 start(DomainKey, OperationsCfg) ->
-
-	?LOG_DEBUG(#{description => "Start adapter",
+	?LOG_NOTICE(#{description => "Start adapter",
 				operations => OperationsCfg,
 				domain => DomainKey}),
-
-	F = fun(OperationID, OperationCfg) ->
+	F = fun(Operation) ->
+				[{OperationID, OperationCfg}] = maps:to_list(Operation),
 				Timeout = maps:get(<<"timeout">>, OperationCfg, 60000),
 				MaxConnections = maps:get(<<"max_connections">>, OperationCfg, 100),
 				Options = [{timeout, Timeout}, {max_connections, MaxConnections}],
@@ -50,11 +49,12 @@ start(DomainKey, OperationsCfg) ->
 										domain => DomainKey, operation_id => OperationID,
 										timeout => Timeout, max_connections => MaxConnections})
 		end,
+	lists:foreach(F, OperationsCfg).
+	%maps:foreach(F, OperationsCfg).
 
-	maps:foreach(F, OperationsCfg).
-
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec process(binary(), binary(), map()) -> tuple().
 process(DomainKey, OperationID, Populated) ->
 
@@ -82,12 +82,13 @@ process(DomainKey, OperationID, Populated) ->
 			garm_http_response:build(Error, ErrorRespHeaders)
 	end.
 
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 %% private functions
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec call(binary(), map(), map(), map(), map()) -> term().
 call(OperationID, Headers, Bindings, Body, OpCfg) -> 
 	Headers0 = maps:to_list(Headers),
@@ -148,8 +149,9 @@ call(OperationID, Headers, Bindings, Body, OpCfg) ->
 
 	end.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec build_url(map()) -> {binary(), binary()}.
 build_url(OpCfg) ->
 	#{

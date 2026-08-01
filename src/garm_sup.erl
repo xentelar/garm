@@ -20,37 +20,36 @@
 
 -module(garm_sup).
 
--moduledoc """
-""".
-
 -behaviour(supervisor).
 
 -define(SERVER, ?MODULE).
 
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 %% public functions
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 
 -export([start_link/0]).
 -export([init/1]).
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec start_link() -> term().
 start_link() ->
     supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
--doc """
-sup_flags() = #{strategy => strategy(),         % optional
-                intensity => pos_integer(), % optional
-                period => pos_integer()}        % optional
-child_spec() = #{id => child_id(),       % mandatory
-                start => mfargs(),      % mandatory
-                restart => restart(),   % optional
-                shutdown => shutdown(), % optional
-                type => worker(),       % optional
-                modules => modules()}   % optional
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% sup_flags() = #{strategy => strategy(),         % optional
+%%                 intensity => pos_integer(), % optional
+%%                 period => pos_integer()}        % optional
+%% child_spec() = #{id => child_id(),       % mandatory
+%%                 start => mfargs(),      % mandatory
+%%                 restart => restart(),   % optional
+%%                 shutdown => shutdown(), % optional
+%%                 type => worker(),       % optional
+%%                 modules => modules()}   % optional
+%% -----------------------------------------------------------------------------
 -spec init(term()) -> term().
 init([]) ->
 	SupFlags = #{
@@ -61,6 +60,6 @@ init([]) ->
 	ChildSpecs = [],
 	{ok, {SupFlags, ChildSpecs}}.
 
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 %% private functions
-%% =============================================================================
+%% -----------------------------------------------------------------------------

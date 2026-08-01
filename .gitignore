@@ -33,4 +33,4 @@ bin
 /.history/
 libs
 dev
-env.sh
+git-env.sh

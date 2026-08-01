@@ -20,30 +20,30 @@
 
 -module(garm_auth).
 
--moduledoc """
-""".
-
 -include_lib("kernel/include/logger.hrl").
 
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 %% public functions
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 
 -export([is_authorized/3]).
 -export([start/4]).
 -export([is_authorized/2]).
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -callback start(DomainKey :: binary(), SecScheme :: binary(), SecurityDef :: map()) -> {ok, term()} | {error, term()}.
 
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -callback is_authorized(Req :: cowboy_req:req(), SecuritySchema :: map()) -> {true, term()} | false.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec is_authorized(atom(), cowboy_req:req(), map()) -> {true, term()} | false.
 is_authorized(AuthControl, Req, SecuritySchema) ->
   try 
@@ -57,8 +57,9 @@ is_authorized(AuthControl, Req, SecuritySchema) ->
     false
   end.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec start(module(), binary(), binary(), map()) -> {ok, term()} | {error, term()}.
 start(AuthControl, DomainKey, SecScheme, SecurityDef) ->
   try 
@@ -76,9 +77,9 @@ start(AuthControl, DomainKey, SecScheme, SecurityDef) ->
 is_authorized(Req, SecuritySchemas) ->
   exec(SecuritySchemas, Req, false).
 
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 %% private functions
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 
 -spec exec(list(), cowboy_req:req(), {true, term()} | false) -> {true, term()} | false.
 exec([], _Req, Result) ->
@@ -86,7 +87,7 @@ exec([], _Req, Result) ->
 
 exec([SecSchema | T], Req, Result) ->
   [SecSchemaDef] = maps:values(SecSchema),
-  AuthControl = maps:get(~"authControl", SecSchemaDef),
+  AuthControl = maps:get(<<"authControl">>, SecSchemaDef),
   case is_authorized(AuthControl, Req, SecSchema) of
     false ->
       exec(T, Req, Result);

@@ -20,9 +20,6 @@
 
 -module(garm_rest_handler).
 
--moduledoc """
-""".
-
 -include_lib("kernel/include/logger.hrl").
 
 -include("http_elements.hrl").
@@ -55,9 +52,9 @@
 -define(URI_LONG, 1024).
 -define(ENTITY_LENGTH, 1024).
 
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 %% public functions
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 
 % Cowboy REST callbacks
 -export([init/2]).
@@ -81,8 +78,9 @@
 %% Handler
 -export([process_request/2]).
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec init(Req :: req(), Opts :: garm_cowboy_config:init_opts()) ->
   {cowboy_rest, Req :: req(), State :: state()}.
 init(Req, {MethodsCfg, ValidBody, Adapter, ValidResponse}) ->
@@ -111,8 +109,9 @@ init(Req, {MethodsCfg, ValidBody, Adapter, ValidResponse}) ->
     operation_id => OperationID, state => State}),
   {cowboy_rest, Req, State}.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec known_methods(Req :: req(), State :: state()) ->
   {Value :: [binary()], Req :: req(), State :: state()}.
 known_methods(Req, #state{origin = Origin, methods = Methods} = State) ->
@@ -128,8 +127,9 @@ known_methods(Req, #state{origin = Origin, methods = Methods} = State) ->
       {Methods, Req, State}
   end.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec uri_too_long(Req :: req(), State :: state()) ->
   {Value :: [binary()], Req :: req(), State :: state()}.
 uri_too_long(Req, #state{origin = Origin} = State) ->
@@ -153,8 +153,9 @@ uri_too_long(Req, #state{origin = Origin} = State) ->
       end
   end.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec allowed_methods(Req :: req(), State :: state()) ->
   {Value :: [binary()], Req :: req(), State :: state()}.
 allowed_methods(Req, #state{origin = Origin, methods = Methods} = State) ->
@@ -170,8 +171,9 @@ allowed_methods(Req, #state{origin = Origin, methods = Methods} = State) ->
       {Methods, Req, State}
   end.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec malformed_request(Req :: req(), State :: state()) ->
   {Value :: false, Req :: req(), State :: state()}.
 malformed_request(Req, #state{origin = Origin, cfg = MethodCfg} = State) ->
@@ -187,8 +189,9 @@ malformed_request(Req, #state{origin = Origin, cfg = MethodCfg} = State) ->
       {true, garm_http_response:resp_headers(Req, Origin), State}
   end.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec is_authorized(Req :: req(), State :: state()) ->
   {Value :: result(), Req :: req(), State :: state()}.
 is_authorized(Req, #state{origin = Origin} = State) ->
@@ -218,22 +221,25 @@ is_authorized(Req, #state{origin = Origin} = State) ->
       end
   end.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec forbidden(Req :: req(), State :: state()) ->
   {Value :: false, Req :: req(), State :: state()}.
 forbidden(Req, #state{origin = _Origin} = State) ->
   {false, Req, State}.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec rate_limited(Req :: req(), State :: state()) ->
   {Value :: false, Req :: req(), State :: state()}.
 rate_limited(Req, #state{origin = _Originfg} = State) ->
   {false, Req, State}.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec valid_content_headers(Req :: req(), State :: state()) ->
   {Value :: boolean(), Req :: req(), State :: state()}.
 valid_content_headers(Req, #state{origin = Origin} = State) ->
@@ -268,8 +274,9 @@ valid_content_headers(Req, #state{origin = Origin} = State) ->
       end
   end.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec valid_entity_length(Req :: req(), State :: state()) ->
   {Value :: true, Req :: req(), State :: state()}.
 valid_entity_length(Req, #state{origin = Origin} = State) ->
@@ -299,8 +306,9 @@ valid_entity_length(Req, #state{origin = Origin} = State) ->
       end
   end.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec content_types_provided(Req :: req(), State :: state()) ->
   {Value :: content_types(), Req :: req(), State :: state()}.
 content_types_provided(Req, State) ->
@@ -310,8 +318,9 @@ content_types_provided(Req, State) ->
     method => cowboy_req:method(Req1), content_types_provided => ContentTypes}),
   {ContentTypes, Req1, State}.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec content_types_accepted(Req :: req(), State :: state()) ->
   {Value :: content_types(), Req :: req(), State :: state()}.
 content_types_accepted(Req, State) ->
@@ -321,15 +330,17 @@ content_types_accepted(Req, State) ->
     method => cowboy_req:method(Req1), content_types_accepted => ContentTypes}),
   {ContentTypes, Req1, State}.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec delete_resource(Req :: req(), State :: state()) ->
   processed_response().
 delete_resource(Req, State) ->
   process_request(Req, State).
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec options(Req :: req(), State :: state()) ->
   {Value :: true, Req :: req(), State :: state()}.
 options(Req0, #state{origin = Origin, methods = Methods} = State) ->
@@ -349,8 +360,9 @@ options(Req0, #state{origin = Origin, methods = Methods} = State) ->
             headers => cowboy_req:resp_headers(Req)}),
   {ok, Req, State}.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec process_request(req(), state()) -> processed_response().
 process_request(Req, State = #state{operation_id = OperationID,
                                         cfg = MethodCfg,
@@ -365,12 +377,13 @@ process_request(Req, State = #state{operation_id = OperationID,
   Req0 = garm_http_response:resp_headers(Req, Origin),
   reply_response(Response, Req0, State).
 
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 %% private functions
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec process(req(), map(), map(), atom(), map(), map(), binary(), map(), binary) -> tuple().
 process(Req, MethodCfg, ParamValues, Adapter, ValidBody, ValidResponse, ContentType, Security, OperationID) ->
   try
@@ -405,8 +418,9 @@ process(Req, MethodCfg, ParamValues, Adapter, ValidBody, ValidResponse, ContentT
       {error, Exception}
   end.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec dispatch_to_adapter(binary(), module(), binary(), map()) -> tuple().
 dispatch_to_adapter(DomainKey, Adapter, OperationID, Populated) ->
   case garm_adapter:process(Adapter, DomainKey, OperationID, Populated) of
@@ -421,8 +435,9 @@ dispatch_to_adapter(DomainKey, Adapter, OperationID, Populated) ->
       {Code, Headers, Body}
   end.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec reply_response(result_ok() | result_error(), req(), state()) ->
   processed_response().
 reply_response(Response, Req0, State = #state{operation_id = OperationID}) ->
@@ -464,8 +479,9 @@ content_types(Req, #state{origin = Origin, cfg = Cfg}, Step) ->
       {lists:map(F, ContentsKeys), Req0}
   end.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec content_type(binary()) -> tuple().
 content_type(ContentType) ->
   case binary:split(ContentType, [<<"/">>], [global]) of

@@ -22,25 +22,22 @@
 
 -behaviour(garm_auth).
 
--moduledoc """
-""".
-
 -include_lib("kernel/include/logger.hrl").
 
 -define(NOW, erlang:system_time(second)).
 -define(CLOCK_SKEW, 2 * 60). % 2 mins
 -define(IS_TIME_EXPIRED(Exp), ((Exp + ?CLOCK_SKEW) - ?NOW) =< 0 ).
 
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 %% public functions
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 
 -export([is_authorized/2]).
 -export([start/3]).
 
 -spec start(binary(), binary(), map()) -> {ok, term()} | {error, term()}.
 start(DomainKey, SecScheme , SecurityDef) ->
-	case maps:get(~"certificate", SecurityDef, undefined) of
+	case maps:get(<<"certificate">>, SecurityDef, undefined) of
 		undefined -> 
 			{error, cert_not_found};
 		CertFileName ->
@@ -60,8 +57,9 @@ start(DomainKey, SecScheme , SecurityDef) ->
 			end
 	end.
 
--doc """
-""".  
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------  
 -spec is_authorized(cowboy_req:req(), map()) -> {true, term()} | false.
 is_authorized(Req, SecuritySchema)  ->
 	case garm_http_request:get_header_value(<<"Authorization">>, Req) of
@@ -69,8 +67,8 @@ is_authorized(Req, SecuritySchema)  ->
 			?LOG_DEBUG(#{description => "Authorization header is undefined"}),
 			false;
 		Bearer ->
-			JWK = maps:get(~"authData", SecuritySchema),
-			Scope = maps:get(~"scope", SecuritySchema),
+			JWK = maps:get(<<"authData">>, SecuritySchema),
+			Scope = maps:get(<<"scope">>, SecuritySchema),
 			case validate_bearer(Bearer, JWK) of
 				{true, Jwt} ->
 					Ctx = Jwt#{<<"scope">> => Scope},
@@ -80,12 +78,13 @@ is_authorized(Req, SecuritySchema)  ->
 			end
 	end.
 
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 %% private functions
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec validate_bearer(binary(), tuple()) -> tuple().
 validate_bearer(Bearer, JWK) ->
 	Token = binary:replace(Bearer, <<"Bearer ">>, <<"">>),
@@ -102,8 +101,9 @@ validate_bearer(Bearer, JWK) ->
 			false
 	end.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec maybe_expired(map()) -> tuple().
 maybe_expired(JWT) ->
 	case maps:get(<<"exp">>, JWT, undefined) of

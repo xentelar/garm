@@ -20,42 +20,43 @@
 
 -module(garm_http_response).
 
--moduledoc """
-""".
-
 -include_lib("kernel/include/logger.hrl").
 
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 %% public functions
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 
 -export([build/2]).
 -export([build/3]).
 -export([resp_headers/2]).
 -export([prepare_response/3]).
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec build(pos_integer(), map()) -> tuple().
 build(Status, Headers) ->
 	msg(Status, Headers).
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec build(pos_integer(), map(), binary()) -> tuple().
 build(Status, Headers, Body) ->
 	msg(Status, Headers, Body).
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec resp_headers(term(), binary()) -> term().
 resp_headers(Req, Origin) ->
   cowboy_req:set_resp_headers(#{
 		<<"Access-Control-Allow-Origin">> => Origin
 	}, Req).
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec prepare_response(tuple(), map(), atom()) -> binary().
 prepare_response({Code, Headers, no_response}, _MethodCfg, ValidResponse) 
 															when map_size(ValidResponse)==0 ->
@@ -74,7 +75,7 @@ prepare_response({Code, Headers, BodyRps}, MethodCfg, ValidResponse)
 	%?LOG_INFO(#{description => "Validation response parameters",
 	%		req_body => BodyRps, headers => Headers, http_code => Code,
 	%		validator_schema => ValidResponse, method_cfg => MethodCfg}),
-	case maps:get(~"responses", MethodCfg, undefined) of
+	case maps:get(<<"responses">>, MethodCfg, undefined) of
 		undefined ->
 			{ok, {Code, Headers, BodyRps}};
 		RspCfg ->
@@ -83,11 +84,11 @@ prepare_response({Code, Headers, BodyRps}, MethodCfg, ValidResponse)
 				undefined ->
 					{ok, {Code, Headers, BodyRps}};
 				HttpCodeCfg ->
-					case maps:get(~"content", HttpCodeCfg, undefined) of
+					case maps:get(<<"content">>, HttpCodeCfg, undefined) of
 						undefined ->
 							{ok, {Code, Headers, BodyRps}};
 						ContentTypes ->
-							case maps:get(~"content-type", Headers, undefined) of
+							case maps:get(<<"content-type">>, Headers, undefined) of
 								undefined ->
 									{ok, {Code, Headers, BodyRps}};
 								ContentType ->
@@ -115,18 +116,20 @@ prepare_response({Code, Headers, BodyRps}, MethodCfg, ValidResponse)
 prepare_response({_Code, _Headers, _BodyRps}, _MethodCfg, _ValidResponse) ->
   error(unexpected_response).
 
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 %% private functions
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec msg(pos_integer(), map(), binary()) -> {pos_integer(), map(), map() | binary()}.
 msg(Status, Headers, Body) ->
 	{Status, Headers, Body}.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec msg(pos_integer(), map()) -> {pos_integer(), map()}.
 msg(Status, Headers) ->
 	{Status, Headers}.

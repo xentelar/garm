@@ -20,19 +20,17 @@
 
 -module(garm_server).
 
--moduledoc """
-""".
-
 -include_lib("kernel/include/logger.hrl").
 
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 %% public functions
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 
 -export([init/0]).
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec init() -> ok.
 init() ->
 	try
@@ -48,12 +46,13 @@ init() ->
 	end,
   ok.
 
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 %% private functions
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec init_domains() -> ok.
 init_domains() ->
   NetOpts = [],
@@ -83,8 +82,9 @@ init_domains() ->
 
   maps:foreach(F, Domains).
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec load_domain_cfg(binary(), map(), binary()) -> term().
 load_domain_cfg(DomainKey, DomainCfg, Path) ->
   case maps:get(<<"cfg">>, DomainCfg, undefined) of
@@ -95,26 +95,31 @@ load_domain_cfg(DomainKey, DomainCfg, Path) ->
 
     CfgFileName ->
       OperationsCfg = garm_config:load_domain_cfg(DomainKey, Path, CfgFileName),
-      ?LOG_DEBUG(#{description => "Domain cfg was loaded", 
-                domain => DomainKey, operations_cfg => OperationsCfg}),
+      ?LOG_NOTICE(#{description => "Domain cfg was loaded", 
+				domain => DomainKey, path => Path, file => CfgFileName}),
+			%?LOG_DEBUG(#{description => "Domain cfg was loaded", 
+			% 	domain => DomainKey, operations_cfg => OperationsCfg}),
       OperationsCfg
   end.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec api_config({binary(), binary()}, map()) -> map().
 api_config({FileDomainPath, DomainKey}, DomainCfg) ->
   #{env => default_dispatch({FileDomainPath, DomainKey}, DomainCfg)}.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec default_dispatch({binary(), binary()}, map()) -> map().
 default_dispatch({FileDomainPath, DomainKey}, DomainCfg) ->
   ApiPaths = garm_cowboy_config:get_api_paths({FileDomainPath, DomainKey}, DomainCfg),
   #{dispatch => cowboy_router:compile(ApiPaths)}.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec socket_transport(inet:ip_address(), inet:port_number(), list()) -> tuple().
 socket_transport(IP, Port, NetOpts) ->
   Opts = [
@@ -129,11 +134,12 @@ socket_transport(IP, Port, NetOpts) ->
       {tcp, Opts}
   end.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec start_adapter(binary(), map(), map()) -> term().
 start_adapter(DomainKey, DomainCfg, OperationsCfg) ->
-  case maps:get(~"adapter", DomainCfg, undefined) of
+  case maps:get(<<"adapter">>, DomainCfg, undefined) of
     undefined ->
       ?LOG_DEBUG(#{description => "Adapter not found", 
         domain_key => DomainKey});
@@ -159,24 +165,25 @@ start_adapter(DomainKey, DomainCfg, OperationsCfg) ->
       end
   end.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec start_security(binary(), map()) -> map() | {error, term()}.
 start_security(DomainKey, DomainCfg) ->
-  case maps:get(~"security", DomainCfg, undefined) of
+  case maps:get(<<"security">>, DomainCfg, undefined) of
     undefined ->
       ?LOG_INFO(#{description => "Security not defined", 
         domain_key => DomainKey}),
       DomainCfg;
     SecurityDefs ->
       F = fun(SecScheme, SecurityDef, Acc) ->
-            case maps:get(~"authControl", SecurityDef, undefined) of
+            case maps:get(<<"authControl">>, SecurityDef, undefined) of
               undefined -> 
                 error(auth_control_undef);
               AuthControl ->
                 case garm_auth:start(AuthControl, DomainKey, SecScheme, SecurityDef) of
                   {ok, SecurityData} ->
-                    SecurityDef0 = SecurityDef#{~"authData" => SecurityData},
+                    SecurityDef0 = SecurityDef#{<<"authData">> => SecurityData},
                     Acc#{SecScheme => SecurityDef0};
                   {error, Reason} ->
                     error(Reason)
@@ -184,5 +191,5 @@ start_security(DomainKey, DomainCfg) ->
             end
       end,
       SecurityDefs0 = maps:fold(F, #{}, SecurityDefs),
-      DomainCfg#{~"security" => SecurityDefs0}
+      DomainCfg#{<<"security">> => SecurityDefs0}
   end.

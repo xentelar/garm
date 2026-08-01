@@ -20,9 +20,6 @@
 
 -module(garm_adapter).
 
--moduledoc """
-""".
-
 -type response() :: {Status :: pos_integer(), Headers :: map()} 
   | {Status :: pos_integer(), Headers :: map(), Body :: binary() | map()}
   | {error, term()}.
@@ -30,28 +27,30 @@
 
 -include_lib("kernel/include/logger.hrl").
 
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 %% public definitions
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 
 -export([init/3]).
 -export([process/4]).
 
--doc """
-Initialize the adapter.
-
-When a `cowboy` process is started this function is called
-by the new process to initialize internal parameters.
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% Initialize the adapter.
+%% When a `cowboy` process is started this function is called
+%% by the new process to initialize internal parameters.
+%% -----------------------------------------------------------------------------
 -callback start(DomainKey :: binary(), OperationsCfg :: map()) -> term() | {error, term()}.
 
--doc """
-Handle the http calls.
-""".
+%% -----------------------------------------------------------------------------
+%% @doc 
+%% Handle the http calls.
+%% -----------------------------------------------------------------------------
 -callback process(DomainKey :: binary(), OperationID :: binary(), Populated :: map()) -> response().
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec init(atom(), binary(), map()) -> term() | {error, term()}.
 init(Handler, DomainKey, Populated) ->
   try 
@@ -65,8 +64,9 @@ init(Handler, DomainKey, Populated) ->
     {error, Reason}
   end.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% -----------------------------------------------------------------------------
 -spec process(atom(), binary(), binary(), map()) -> response().
 process(Adapter, DomainKey, OperationID, Populated) ->
   try 
@@ -80,6 +80,6 @@ process(Adapter, DomainKey, OperationID, Populated) ->
     {error, Reason}
   end.
 
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 %% private functions
-%% =============================================================================
+%% -----------------------------------------------------------------------------

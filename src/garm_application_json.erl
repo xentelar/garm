@@ -20,29 +20,27 @@
 
 -module(garm_application_json).
 
--moduledoc """
-This module only decode and validate a json body
-""".
-
 -behaviour(garm_validator).
 
 -include_lib("kernel/include/logger.hrl").
 
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 %% public functions
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 
 -export([init/1]).
 -export([validate/3]).
 
 -spec init(ObjectsDef :: map()) -> {ok, term()} | {error, term()}.
 init(ObjectsDef) -> 
-	C = #{~"components" => ObjectsDef},
+	C = #{<<"components">> => ObjectsDef},
   JesseState = jesse_state:new(C, [{default_schema_ver, <<"http://json-schema.org/draft-04/schema#">>}]),
 	{ok, JesseState}.
 
--doc """
-""".
+%% -----------------------------------------------------------------------------
+%% @doc
+%% Decode and validate a json body
+%% -----------------------------------------------------------------------------
 -spec validate(binary() | map(), term(), true | false) -> {ok, binary() | map()} | {error, term()}.
 validate(ReqBody, {Schema, JesseState}, Required) ->
 	try
@@ -63,7 +61,7 @@ validate(ReqBody, {Schema, JesseState}, Required) ->
 			{Size, _} when Size > 0 ->
 				case thoas:decode(ReqBody) of
 					{ok, JsonBody} ->
-						ObjectDef = maps:get(~"schema", Schema),
+						ObjectDef = maps:get(<<"schema">>, Schema),
 						jesse_schema_validator:validate_with_state(ObjectDef, JsonBody, JesseState),
 						?LOG_DEBUG(#{description => "Validation ",
 							req_body => ReqBody, required => Required,
@@ -83,6 +81,6 @@ validate(ReqBody, {Schema, JesseState}, Required) ->
 			{error, Reason0}
 	end.
 
-%% =============================================================================
+%% -----------------------------------------------------------------------------
 %% private functions
-%% =============================================================================
+%% -----------------------------------------------------------------------------
