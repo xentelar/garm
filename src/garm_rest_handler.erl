@@ -428,7 +428,7 @@ dispatch_to_adapter(DomainKey, Adapter, OperationID, Populated) ->
       ?LOG_DEBUG(#{description => "Adapter errors", 
         reason => Reason, adapter => Adapter, callback => process, 
         args => [DomainKey, OperationID, Populated]}),
-      garm_http_response:build(?BAD_GATEWAY_HTTP_CODE, #{});
+      garm_http_response:build(?INTERNAL_SERVER_ERROR_HTTP_CODE, #{});
     {Code, Headers} ->
       {Code, Headers};
     {Code, Headers, Body} ->
@@ -448,13 +448,26 @@ reply_response(Response, Req0, State = #state{operation_id = OperationID}) ->
     {ok, {Code, Headers, Body}} ->
       Req1 = cowboy_req:reply(Code, Headers, Body, Req0),
       {stop, Req1, State};
-    {error, Reason} ->
-      ?LOG_DEBUG(#{description => "Unable to process response", 
-        op_id => OperationID, reason => Reason}), %state => State}),
-      Req2 = cowboy_req:reply(?BAD_GATEWAY_HTTP_CODE, #{}, Req0),
+		
+		{error, content_type_not_found} ->
+      ?LOG_ERROR(#{description => "Unable to process response", 
+        op_id => OperationID, reason => content_type_not_found}), %state => State}),
+      Req2 = cowboy_req:reply(?BAD_REQUEST_HTTP_CODE, #{}, Req0),
       {stop, Req2, State};
+		{error, validator_not_found} ->
+      ?LOG_ERROR(#{description => "Unable to process response", 
+        op_id => OperationID, reason => validator_not_found}), %state => State}),
+      Req2 = cowboy_req:reply(?UNSUPPORTED_MEDIA_TYPE_HTTP_CODE, #{}, Req0),
+      {stop, Req2, State};
+
+    {error, Reason} ->
+      ?LOG_ERROR(#{description => "Unable to process response", 
+        op_id => OperationID, reason => Reason}), %state => State}),
+      Req2 = cowboy_req:reply(?INTERNAL_SERVER_ERROR_HTTP_CODE, #{}, Req0),
+      {stop, Req2, State};
+
     {error, HttpCode, Reason} ->
-      ?LOG_DEBUG(#{description => "Unable to process response", 
+      ?LOG_ERROR(#{description => "Unable to process response", 
         op_id => OperationID, reason => Reason}), %state => State}),
       Req2 = cowboy_req:reply(HttpCode, #{}, Req0),
       {stop, Req2, State}

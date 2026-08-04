@@ -51,7 +51,7 @@ get_header_value(Name, Req) ->
 %% @doc
 %% -----------------------------------------------------------------------------
 -spec get_body_from_req(map(), map(), cowboy_req:req(), map(), binary()) -> map().
-get_body_from_req(MethodCfg, ParamValues, Req, ValidBody, ContentType) ->
+get_body_from_req(MethodCfg, ParamValues, Req, ValidBody, HContentType) ->
   % ?LOG_DEBUG(#{description => "Process operationId", method_cfg => MethodCfg, 
   %   req_params => ParamValues, reques => Req, body_val => ValidBody, 
   %   content_type => ContentType}),
@@ -60,7 +60,7 @@ get_body_from_req(MethodCfg, ParamValues, Req, ValidBody, ContentType) ->
       {ok, ParamValues#{<<"body">> => #{}}};
     
     _RequestBody ->
-      case apply_content_type(MethodCfg, Req, ContentType, ValidBody) of
+      case apply_content_type(MethodCfg, Req, HContentType, ValidBody) of
         {ok, Body} -> {ok, ParamValues#{<<"body">> => Body}};
         Error -> Error
       end
@@ -179,35 +179,42 @@ get_value(ParamCfg, Value) ->
 
 -spec apply_content_type(map(), cowboy_req:req(), binary(), map()) -> 
     binary() | map() | {error, pos_integer(), term()}.
-apply_content_type(MethodCfg, Req, ContentType, ValidBody) ->
-  Body = get_body(Req),
-  case maps:get(ContentType, ValidBody, undefined) of
-    undefined -> 
-      {error, "validator module not found"};
-    Validator -> 
-      case maps:get(<<"requestBody">>, MethodCfg, undefined) of
-        undefined ->
-          {error, no_request_body};
-        RequestBody ->
-          case maps:get(<<"content">>, RequestBody, undefined) of
-            undefined ->
-              {error, no_request_body_content};
-            ContentTypes ->
-              case maps:get(ContentType, ContentTypes, undefined) of
-                undefined ->
-                  {error, request_body_config};
-                Schema ->
-                  Required = maps:get(<<"required">>, RequestBody, false),
-                  case garm_validator:validate(Validator, Body, Schema, Required) of
-                    {ok, BodyJson} ->
-                      {ok, BodyJson};
-                    {error, Reason} ->
-                      {error, ?BAD_REQUEST_HTTP_CODE, Reason}
-                  end
-              end
-          end
-      end
-  end.
+apply_content_type(MethodCfg, Req, HContentType, ValidBody) ->
+	case HContentType of
+		undefined ->
+			{error, content_type_not_found};
+		_ ->
+			HContentType0 = binary:replace(HContentType, [<<" ">>], <<>>, [global]),
+				[ContentType | CTParams] = binary:split(HContentType0, <<";">>, [global]),
+				Body = get_body(Req),
+				case maps:get(ContentType, ValidBody, undefined) of
+					undefined -> 
+						{error, validator_not_found};
+					Validator -> 
+						case maps:get(<<"requestBody">>, MethodCfg, undefined) of
+							undefined ->
+								{error, no_request_body};
+							RequestBody ->
+								case maps:get(<<"content">>, RequestBody, undefined) of
+									undefined ->
+										{error, no_request_body_content};
+									ContentTypes ->
+										case maps:get(ContentType, ContentTypes, undefined) of
+											undefined ->
+												{error, request_body_config};
+											Schema ->
+												Required = maps:get(<<"required">>, RequestBody, false),
+												case garm_validator:validate(Validator, Body, Schema, Required, CTParams) of
+													{ok, BodyJson} ->
+														{ok, BodyJson};
+													{error, Reason} ->
+														{error, ?BAD_REQUEST_HTTP_CODE, Reason}
+												end
+										end
+								end
+						end
+				end
+	end.
 
 %% -----------------------------------------------------------------------------
 %% @doc

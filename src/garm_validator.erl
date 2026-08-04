@@ -27,7 +27,7 @@
 %% -----------------------------------------------------------------------------
 
 -export([start/2]).
--export([validate/4]).
+-export([validate/5]).
 
 %% -----------------------------------------------------------------------------
 %% @doc
@@ -38,7 +38,7 @@
 %% @doc
 %% -----------------------------------------------------------------------------
 -callback validate(Value :: binary() | map(), ValidatorSchema :: term(), 
-                  Required :: true | false) -> {ok, binary() | map()} | {error, term()}.
+				Required :: true | false, Params :: [binary()]) -> {ok, binary() | map()} | {error, term()}.
 
 -spec start(atom(), map()) -> {ok, term()} | {error, term()}.
 start(Handler, SecurityDef) ->
@@ -56,11 +56,11 @@ start(Handler, SecurityDef) ->
 %% @doc
 %% -----------------------------------------------------------------------------
 -spec validate(atom(), binary() | map(), term(), 
-								true | false) -> {ok, binary() | map()} | {error, term()}.
-validate(Handler, Value, ValidatorSchema, Required) ->
+								true | false, [binary()]) -> {ok, binary() | map()} | {error, term()}.
+validate(Handler, Value, ValidatorSchema, Required, Params) ->
   try 
 
-    erlang:apply(Handler, validate, [Value, ValidatorSchema, Required])
+    erlang:apply(Handler, validate, [Value, ValidatorSchema, Required, Params])
 
   catch _Class:Reason:_Stacktrace ->
     ?LOG_ERROR(#{description => "Security conf errors", 

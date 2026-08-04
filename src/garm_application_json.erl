@@ -29,7 +29,7 @@
 %% -----------------------------------------------------------------------------
 
 -export([init/1]).
--export([validate/3]).
+-export([validate/4]).
 
 -spec init(ObjectsDef :: map()) -> {ok, term()} | {error, term()}.
 init(ObjectsDef) -> 
@@ -41,8 +41,8 @@ init(ObjectsDef) ->
 %% @doc
 %% Decode and validate a json body
 %% -----------------------------------------------------------------------------
--spec validate(binary() | map(), term(), true | false) -> {ok, binary() | map()} | {error, term()}.
-validate(ReqBody, {Schema, JesseState}, Required) ->
+-spec validate(binary() | map(), term(), true | false, [binary()]) -> {ok, binary() | map()} | {error, term()}.
+validate(ReqBody, {Schema, JesseState}, Required, _Params) ->
 	try
 
 		?LOG_DEBUG(#{description => "Validation parameters",

@@ -28,7 +28,7 @@
 %% -----------------------------------------------------------------------------
 
 -export([init/1]).
--export([validate/3]).
+-export([validate/4]).
 
 -spec init(ObjectsDef :: map()) -> {ok, term()} | {error, term()}.
 init(_ObjectsDef) -> 
@@ -39,8 +39,8 @@ init(_ObjectsDef) ->
 %% @doc
 %% Only decode a json body
 %% -----------------------------------------------------------------------------
--spec validate(binary() | map(), term(), true | false) -> {ok, binary() | map()} | {error, term()}.
-validate(ReqBody, _, _Required) ->
+-spec validate(binary() | map(), term(), true | false, [binary()]) -> {ok, binary() | map()} | {error, term()}.
+validate(ReqBody, _, _Required, _Params) ->
 	try
 
 		?LOG_DEBUG(#{description => "Validation request body",
