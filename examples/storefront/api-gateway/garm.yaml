@@ -15,8 +15,6 @@ domains:
       ClientAuth:
         authControl: garm_jwt_auth
         certificate: auth-key.pem
-      ApiKey:
-        authControl: garm_token_auth
     validBody:
       application/json: garm_application_json
       text/plain: garm_application_json

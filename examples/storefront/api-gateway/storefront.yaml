@@ -622,10 +622,6 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-    ApiKey:
-      type: apiKey
-      in: header
-      name: Auth-Token
 
   requestBodies:
     AccountData:
