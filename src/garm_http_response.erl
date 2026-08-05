@@ -91,7 +91,9 @@ prepare_response({Code, Headers, BodyRps}, MethodCfg, ValidResponse)
 							case maps:get(<<"content-type">>, Headers, undefined) of
 								undefined ->
 									{ok, {Code, Headers, BodyRps}};
-								ContentType ->
+								HContentType ->
+									HContentType0 = binary:replace(HContentType, [<<" ">>], <<>>, [global]),
+									[ContentType | CTParams] = binary:split(HContentType0, <<";">>, [global]),
 									case maps:get(ContentType, ContentTypes, undefined) of
 										undefined ->
 											{ok, {Code, Headers, BodyRps}};
@@ -100,7 +102,7 @@ prepare_response({Code, Headers, BodyRps}, MethodCfg, ValidResponse)
 												undefined ->
 													{error, <<"response validator module for [", ContentType/binary, "] not found">>};
 												Validator ->
-												case garm_validator:validate(Validator, BodyRps, SchemaVal, false) of
+												case garm_validator:validate(Validator, BodyRps, SchemaVal, false, CTParams) of
 													{ok, _BodyRps} ->
 														{ok, {Code, Headers, BodyRps}};
 													{error, Reason} ->
