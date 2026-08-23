@@ -88,16 +88,16 @@ is_authorized(Req, SecuritySchema)  ->
 -spec validate_bearer(binary(), tuple()) -> tuple().
 validate_bearer(Bearer, JWK) ->
 	Token = binary:replace(Bearer, <<"Bearer ">>, <<"">>),
-	?LOG_DEBUG(#{description => "Token to process", 
-		token => Token}),
+	%?LOG_DEBUG(#{description => "Token to process", 
+	%	token => Token}),
 	case jose_jwt:verify(JWK, Token) of
-		{true, {_, JWT}, JWS} ->
-			?LOG_DEBUG(#{description => "Verify token", 
-				jwt => JWT, jws => JWS}),
+		{true, {_, JWT}, _JWS} ->
+			%?LOG_DEBUG(#{description => "Verify token", 
+			%	jwt => JWT, jws => JWS}),
 			maybe_expired(JWT);
-		Error ->
-			?LOG_ERROR(#{description => "The token is invalid", 
-				error => Error}),
+		_Error ->
+			%?LOG_ERROR(#{description => "The token is invalid", 
+			%	error => Error}),
 			false
 	end.
 
@@ -108,20 +108,17 @@ validate_bearer(Bearer, JWK) ->
 maybe_expired(JWT) ->
 	case maps:get(<<"exp">>, JWT, undefined) of
 		undefined ->
-
-			?LOG_ERROR(#{description => "The key expiration time (exp) is not present"}),
+			%?LOG_ERROR(#{description => "The key expiration time (exp) is not present"}),
 			false;
-		
 		Exp ->
 			case ?IS_TIME_EXPIRED(Exp) of
 				true ->
-					?LOG_DEBUG(#{description => "Token time has expired", 
-							jwt => JWT}),
+					%?LOG_DEBUG(#{description => "Token time has expired", 
+					%	jwt => JWT}),
 					false;
-
 				false ->
-					?LOG_DEBUG(#{description => "Token is ok", 
-							jwt => JWT}),
+					%?LOG_DEBUG(#{description => "Token is ok", 
+					%	jwt => JWT}),
 					{true, #{<<"jwt">> => JWT}}
 			end
 	end.

@@ -44,40 +44,38 @@ init(ObjectsDef) ->
 -spec validate(binary() | map(), term(), true | false, [binary()]) -> {ok, binary() | map()} | {error, term()}.
 validate(ReqBody, {Schema, JesseState}, Required, _Params) ->
 	try
-
-		?LOG_DEBUG(#{description => "Validation parameters",
-			req_body => ReqBody, required => Required,
-			validator_schema => Schema, jesse_state => JesseState}),
-
+		%?LOG_DEBUG(#{description => "Validation parameters",
+		%	req_body => ReqBody, required => Required,
+		%	validator_schema => Schema, jesse_state => JesseState}),
 		case {byte_size(ReqBody), Required} of
 			{0, false} ->
 				{ok, #{}};
 
 			{0, true} ->
-				?LOG_ERROR(#{description => "Validation error",
-					req_body => ReqBody, required => Required}),
+				%?LOG_ERROR(#{description => "Validation error",
+				%	req_body => ReqBody, required => Required}),
 				{error, empty_body};
 
 			{Size, _} when Size > 0 ->
-				case thoas:decode(ReqBody) of
+				Utf8Binary = unicode:characters_to_binary(ReqBody),
+				case thoas:decode(Utf8Binary) of
 					{ok, JsonBody} ->
 						ObjectDef = maps:get(<<"schema">>, Schema),
 						jesse_schema_validator:validate_with_state(ObjectDef, JsonBody, JesseState),
-						?LOG_DEBUG(#{description => "Validation ",
-							req_body => ReqBody, required => Required,
-							validator_schema => Schema, jesse_state => JesseState}),
+						%?LOG_DEBUG(#{description => "Validation ",
+						%	req_body => ReqBody, required => Required,
+						%	validator_schema => Schema, jesse_state => JesseState}),
 						{ok, JsonBody};
 					{error, Reason} ->
-						?LOG_ERROR(#{description => "Validation error",
-							req_body => ReqBody, required => Required, reason => Reason}),
+						%?LOG_ERROR(#{description => "Validation error",
+						%	req_body => ReqBody, required => Required, reason => Reason}),
 						{error, Reason}
 				end
 		end
-
 	catch
-		Class:Reason0:_Stacktrace ->
-			?LOG_ERROR(#{description => "Validation error",
-				error => Class, reason => Reason0}),
+		_Class:Reason0:_Stacktrace ->
+			%?LOG_ERROR(#{description => "Validation error",
+			%	reason => Reason0, stacktrace => Stacktrace}),
 			{error, Reason0}
 	end.
 

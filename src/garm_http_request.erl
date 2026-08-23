@@ -51,17 +51,17 @@ get_header_value(Name, Req) ->
 %% @doc
 %% -----------------------------------------------------------------------------
 -spec get_body_from_req(map(), map(), cowboy_req:req(), map(), binary()) -> map().
-get_body_from_req(MethodCfg, ParamValues, Req, ValidBody, HContentType) ->
+get_body_from_req(MethodCfg, Params, Req, ValidBody, HContentType) ->
   % ?LOG_DEBUG(#{description => "Process operationId", method_cfg => MethodCfg, 
-  %   req_params => ParamValues, reques => Req, body_val => ValidBody, 
+  %   params => Params, reques => Req, body_val => ValidBody, 
   %   content_type => ContentType}),
   case maps:get(<<"requestBody">>, MethodCfg, undefined) of
     undefined ->
-      {ok, ParamValues#{<<"body">> => #{}}};
+      {ok, Params#{<<"body">> => #{}}};
     
     _RequestBody ->
       case apply_content_type(MethodCfg, Req, HContentType, ValidBody) of
-        {ok, Body} -> {ok, ParamValues#{<<"body">> => Body}};
+        {ok, Body} -> {ok, Params#{<<"body">> => Body}};
         Error -> Error
       end
   end.
@@ -74,7 +74,6 @@ get_params_values(MethodCfg, Req) ->
   case maps:get(<<"parameters">>, MethodCfg, no_params) of
     no_params ->
       ?DEFAULT_VALUES;
-
     ParamsCfg -> 
       F = fun(ParamCfg, Values) ->
             ParamName = maps:get(<<"name">>, ParamCfg),

@@ -46,11 +46,11 @@
   origin              :: binary(),
   methods             :: [binary()],
   security            :: map(),
-  param_values        :: map()
+  params        			:: map()
 }).
 
--define(URI_LONG, 1024).
--define(ENTITY_LENGTH, 1024).
+-define(URI_LONG, 8192).
+-define(ENTITY_LENGTH, 1024*10000).
 
 %% -----------------------------------------------------------------------------
 %% public functions
@@ -87,9 +87,9 @@ init(Req, {MethodsCfg, ValidBody, Adapter, ValidResponse}) ->
   Method = cowboy_req:method(Req),
   Method0 = garm_utils:to_lower(Method),
   Origin = cowboy_req:header(<<"origin">>, Req, <<"*">>),
-  ?LOG_DEBUG(#{description => "Data Gathering to process the request",
-    method => Method, request => Req, 
-    state => {MethodsCfg, ValidBody, Adapter, ValidResponse}}),
+  %?LOG_DEBUG(#{description => "Data Gathering to process the request",
+  %  method => Method, request => Req, 
+  %  state => {MethodsCfg, ValidBody, Adapter, ValidResponse}}),
   MethodCfg = maps:get(Method0, MethodsCfg, #{}),
   OperationID = maps:get(<<"operationId">>, MethodCfg, not_allowed),
   SecuritySchemas = maps:get(<<"security">>, MethodCfg, []),
@@ -105,8 +105,8 @@ init(Req, {MethodsCfg, ValidBody, Adapter, ValidResponse}) ->
     origin = Origin,
     methods = Methods0
   },
-  ?LOG_DEBUG(#{description => "Processing the request",
-    operation_id => OperationID, state => State}),
+  %?LOG_DEBUG(#{description => "Processing the request",
+  %  operation_id => OperationID, state => State}),
   {cowboy_rest, Req, State}.
 
 %% -----------------------------------------------------------------------------
@@ -118,12 +118,12 @@ known_methods(Req, #state{origin = Origin, methods = Methods} = State) ->
   Method = cowboy_req:method(Req),
   case lists:member(Method, Methods) of
     false ->
-      ?LOG_DEBUG(#{description => "Unknown Method", 
-                  method => Method, methods => Methods}),
+      %?LOG_DEBUG(#{description => "Unknown Method", 
+      %            method => Method, methods => Methods}),
       {Methods, garm_http_response:resp_headers(Req, Origin), State};
     true ->
-      ?LOG_DEBUG(#{description => "Method is ok",
-                  method => Method, methods => Methods}),
+      %?LOG_DEBUG(#{description => "Method is ok",
+      %            method => Method, methods => Methods}),
       {Methods, Req, State}
   end.
 
@@ -135,20 +135,20 @@ known_methods(Req, #state{origin = Origin, methods = Methods} = State) ->
 uri_too_long(Req, #state{origin = Origin} = State) ->
   case cowboy_req:method(Req) of
     <<"OPTIONS">> ->
-      ?LOG_DEBUG(#{description => "No validate", 
-                  method => <<"OPTIONS">>}),
+      %?LOG_DEBUG(#{description => "No validate", 
+      %            method => <<"OPTIONS">>}),
       {false, Req, State};
 
-    Method ->
+    _Method ->
       Path = cowboy_req:path(Req),
       case bit_size(Path) of
         A when A>?URI_LONG ->
-          ?LOG_DEBUG(#{description => "API Path is too long",
-                      method => Method}),
+          %?LOG_DEBUG(#{description => "API Path is too long",
+          %            method => Method}),
           {true, garm_http_response:resp_headers(Req, Origin), State};
         _ ->
-          ?LOG_DEBUG(#{description => "API Path is ok", 
-                      method => Method}),
+          %?LOG_DEBUG(#{description => "API Path is ok", 
+          %            method => Method}),
           {false, Req, State}
       end
   end.
@@ -162,12 +162,12 @@ allowed_methods(Req, #state{origin = Origin, methods = Methods} = State) ->
   Method = cowboy_req:method(Req),
   case lists:member(Method, Methods) of
     fasle ->
-      ?LOG_DEBUG(#{description => "No allowed Method",
-                  method => Method, methods => Methods}),
+      %?LOG_DEBUG(#{description => "No allowed Method",
+      %            method => Method, methods => Methods}),
       {Methods, garm_http_response:resp_headers(Req, Origin), State};
     true ->
-      ?LOG_DEBUG(#{description => "Allowed Method",
-                  method => Method, methods => Methods}),
+      %?LOG_DEBUG(#{description => "Allowed Method",
+      %            method => Method, methods => Methods}),
       {Methods, Req, State}
   end.
 
@@ -178,10 +178,10 @@ allowed_methods(Req, #state{origin = Origin, methods = Methods} = State) ->
   {Value :: false, Req :: req(), State :: state()}.
 malformed_request(Req, #state{origin = Origin, cfg = MethodCfg} = State) ->
   try 
-    ParamValues = garm_http_request:get_params_values(MethodCfg, Req),
+    Params = garm_http_request:get_params_values(MethodCfg, Req),
     HExt = cowboy_req:headers(Req),
-    ParamValues0 = ParamValues#{<<"headers-ext">> => HExt},
-    {false, Req, State#state{param_values = ParamValues0}}
+    Params0 = Params#{<<"headers-ext">> => HExt},
+    {false, Req, State#state{params = Params0}}
   catch
     _Class:Exception:Stacktrace ->
       ?LOG_DEBUG(#{description => "Parameter value error", 
@@ -197,25 +197,25 @@ malformed_request(Req, #state{origin = Origin, cfg = MethodCfg} = State) ->
 is_authorized(Req, #state{origin = Origin} = State) ->
   case cowboy_req:method(Req) of
     <<"OPTIONS">> ->
-      ?LOG_DEBUG(#{description => "No security is needed", 
-                  method => <<"OPTIONS">>}),
+      %?LOG_DEBUG(#{description => "No security is needed", 
+      %            method => <<"OPTIONS">>}),
       {true, Req, State};
-    Method ->
+    _Method ->
       Req0 = garm_http_response:resp_headers(Req, Origin),
       case State#state.security_schemas of
         [] ->
-          ?LOG_DEBUG(#{description => "Auth Control is undefined", 
-                      method => Method}),
+          %?LOG_DEBUG(#{description => "Auth Control is undefined", 
+          %            method => Method}),
           {true, Req, State};
         SecuritySchemas ->
           case garm_auth:is_authorized(Req, SecuritySchemas) of
             false -> 
-              ?LOG_DEBUG(#{description => "Authorization expired or not allowed", 
-                          method => Method}),
+              %?LOG_DEBUG(#{description => "Authorization expired or not allowed", 
+              %            method => Method}),
               {{false, <<"Authorization expired or not allowed">>}, Req0, State};
             {true, Security} ->
-              ?LOG_DEBUG(#{description => "Authorization header is ok", 
-                          method => Method}),
+              %?LOG_DEBUG(#{description => "Authorization header is ok", 
+              %            method => Method}),
               {true, Req, State#state{security = Security}}
           end
       end
@@ -245,30 +245,30 @@ rate_limited(Req, #state{origin = _Originfg} = State) ->
 valid_content_headers(Req, #state{origin = Origin} = State) ->
   case cowboy_req:method(Req) of
     <<"OPTIONS">> ->
-      ?LOG_DEBUG(#{description => "No validate", 
-                  method => <<"OPTIONS">>}),
+      %?LOG_DEBUG(#{description => "No validate", 
+      %            method => <<"OPTIONS">>}),
       {true, Req, State};
-    Method -> 
+    _Method -> 
       Cfg = State#state.cfg,
-      ?LOG_DEBUG(#{description => "Headers from request", 
-                  method => Method, headers => maps:get(headers, Req)}),
+      %?LOG_DEBUG(#{description => "Headers from request", 
+      %            method => Method, headers => maps:get(headers, Req)}),
       case maps:get(<<"requestBody">>, Cfg, undefined) of
         undefined ->
           H = maps:get(headers, Req),
           Req0 = Req#{headers => maps:remove(<<"accept">>, H)},
-          ?LOG_DEBUG(#{description => "No Request Body, No validate", 
-                      method => Method}),
+          %?LOG_DEBUG(#{description => "No Request Body, No validate", 
+          %            method => Method}),
           {true, Req0, State#state{content_type = undefined}};
-        RequestBody ->
+        _RequestBody ->
           case garm_http_request:get_header_value(<<"content-type">>, Req) of
             undefined ->
-              ?LOG_DEBUG(#{description => "Content-Type is required", 
-                          method => Method, request_body => RequestBody}),
+              %?LOG_DEBUG(#{description => "Content-Type is required", 
+              %            method => Method, request_body => RequestBody}),
               {false, garm_http_response:resp_headers(Req, Origin), State};
 
             ContentType -> 
-              ?LOG_DEBUG(#{description => "Content-Type is present", 
-                      method => Method, content_type => ContentType}),
+              %?LOG_DEBUG(#{description => "Content-Type is present", 
+              %        method => Method, content_type => ContentType}),
               {true, Req, State#state{content_type = ContentType}}
           end
       end
@@ -282,25 +282,25 @@ valid_content_headers(Req, #state{origin = Origin} = State) ->
 valid_entity_length(Req, #state{origin = Origin} = State) ->
   case cowboy_req:method(Req) of
     <<"OPTIONS">> ->
-      ?LOG_DEBUG(#{description => "No Entity", 
-                  method => <<"OPTIONS">>}),
+      %?LOG_DEBUG(#{description => "No Entity", 
+      %            method => <<"OPTIONS">>}),
       {true, Req, State};
-    Method ->
+    _Method ->
       Cfg = State#state.cfg,
       case maps:get(<<"requestBody">>, Cfg, no_request_body) of
         no_request_body ->
-          ?LOG_DEBUG(#{description => "No Entity", 
-                      method => Method}),
+          %?LOG_DEBUG(#{description => "No Entity", 
+          %            method => Method}),
           {true, Req, State};
         _RequestBody ->
           case cowboy_req:body_length(Req) of
             A when A>?ENTITY_LENGTH ->
-              ?LOG_DEBUG(#{description => "Entity is too long", 
-                          sise => A, method => Method}),
+              %?LOG_DEBUG(#{description => "Entity is too long", 
+              %            sise => A, method => Method}),
               {false, garm_http_response:resp_headers(Req, Origin), State};
             _ ->
-              ?LOG_DEBUG(#{description => "Entity is ok", 
-                          method => Method}),
+              %?LOG_DEBUG(#{description => "Entity is ok", 
+              %            method => Method}),
               {true, Req, State}
           end
       end
@@ -313,9 +313,9 @@ valid_entity_length(Req, #state{origin = Origin} = State) ->
   {Value :: content_types(), Req :: req(), State :: state()}.
 content_types_provided(Req, State) ->
   {ContentTypes, Req1} = content_types(Req, State, content_types_provided),
-  ?LOG_DEBUG(#{description => "Content types provided", 
-    domain => maps:get(ref, Req), operation_id => State#state.operation_id,
-    method => cowboy_req:method(Req1), content_types_provided => ContentTypes}),
+  %?LOG_DEBUG(#{description => "Content types provided", 
+  %  domain => maps:get(ref, Req), operation_id => State#state.operation_id,
+  %  method => cowboy_req:method(Req1), content_types_provided => ContentTypes}),
   {ContentTypes, Req1, State}.
 
 %% -----------------------------------------------------------------------------
@@ -325,9 +325,9 @@ content_types_provided(Req, State) ->
   {Value :: content_types(), Req :: req(), State :: state()}.
 content_types_accepted(Req, State) ->
   {ContentTypes, Req1} = content_types(Req, State, content_types_accepted),
-  ?LOG_DEBUG(#{description => "Content types accepted", 
-    domain => maps:get(ref, Req), operation_id => State#state.operation_id,
-    method => cowboy_req:method(Req1), content_types_accepted => ContentTypes}),
+  %?LOG_DEBUG(#{description => "Content types accepted", 
+  %  domain => maps:get(ref, Req), operation_id => State#state.operation_id,
+  %  method => cowboy_req:method(Req1), content_types_accepted => ContentTypes}),
   {ContentTypes, Req1, State}.
 
 %% -----------------------------------------------------------------------------
@@ -356,8 +356,8 @@ options(Req0, #state{origin = Origin, methods = Methods} = State) ->
 
   Req = cowboy_req:set_resp_headers(?ACCESS_CONTROL_HEADERS(Origin, Methods0), Req0),
 
-  ?LOG_DEBUG(#{description => "Options Method was processed", 
-            headers => cowboy_req:resp_headers(Req)}),
+  %?LOG_DEBUG(#{description => "Options Method was processed", 
+  %          headers => cowboy_req:resp_headers(Req)}),
   {ok, Req, State}.
 
 %% -----------------------------------------------------------------------------
@@ -369,11 +369,11 @@ process_request(Req, State = #state{operation_id = OperationID,
                                         valid_body = ValidBody,
                                         content_type = ContentType,
                                         adapter = Adapter,
-                                        param_values = ParamValues,
+                                        params = Params,
                                         security = Security,
                                         valid_response = ValidResponse,
                                         origin = Origin}) ->
-  Response = process(Req, MethodCfg, ParamValues, Adapter, ValidBody, ValidResponse, ContentType, Security, OperationID),
+  Response = process(Req, MethodCfg, Params, Adapter, ValidBody, ValidResponse, ContentType, Security, OperationID),
   Req0 = garm_http_response:resp_headers(Req, Origin),
   reply_response(Response, Req0, State).
 
@@ -385,35 +385,35 @@ process_request(Req, State = #state{operation_id = OperationID,
 %% @doc
 %% -----------------------------------------------------------------------------
 -spec process(req(), map(), map(), atom(), map(), map(), binary(), map(), binary) -> tuple().
-process(Req, MethodCfg, ParamValues, Adapter, ValidBody, ValidResponse, ContentType, Security, OperationID) ->
+process(Req, MethodCfg, Params, Adapter, ValidBody, ValidResponse, ContentType, Security, OperationID) ->
   try
     DomainKey = maps:get(ref, Req),
-    case garm_http_request:get_body_from_req(MethodCfg, ParamValues, Req, ValidBody, ContentType) of
+    case garm_http_request:get_body_from_req(MethodCfg, Params, Req, ValidBody, ContentType) of
+      {ok, Params0} ->
+        Params1 = Params0#{<<"security">> => Security},
+        %?LOG_DEBUG(#{description => "Process operationId", domain => DomainKey,
+        %  operation_id => OperationID, params => Params1}),
+        case exec_adapter(DomainKey, Adapter, OperationID, Params1) of
+          {HttpCode, Headers, BodyRps} ->
+            %?LOG_DEBUG(#{description => "Response from adapter",
+            %  domain => DomainKey, operation_id => OperationID, rsp_code => Code, 
+            %  rsp_headers => Headers, body_response => BodyRps, valid_response => ValidResponse}),
+            garm_http_response:prepare_response({HttpCode, Headers, BodyRps}, MethodCfg, ValidResponse);
+          {HttpCode, Headers} ->
+            %?LOG_DEBUG(#{description => "Response from adapter",
+            %  domain => DomainKey, operation_id => OperationID, 
+            %  rsp_code => Code, rsp_headers => Headers, body_response => no_response}),
+            garm_http_response:prepare_response({HttpCode, Headers, no_response}, MethodCfg, ValidResponse)
+      	end;
       {error, Reason} ->
         {error, Reason};
       {error, HttpCode, Reason} ->
-        {error, HttpCode, Reason};
-      {ok, ParamValues0} ->
-        ParamValues1 = ParamValues0#{<<"security">> => Security},
-        ?LOG_DEBUG(#{description => "Process operationId", domain => DomainKey,
-          operation_id => OperationID, param_values => ParamValues1}),
-        case dispatch_to_adapter(DomainKey, Adapter, OperationID, ParamValues1) of
-          {Code, Headers, BodyRps} ->
-            ?LOG_DEBUG(#{description => "Response from adapter",
-              domain => DomainKey, operation_id => OperationID, rsp_code => Code, 
-              rsp_headers => Headers, body_response => BodyRps, valid_response => ValidResponse}),
-            garm_http_response:prepare_response({Code, Headers, BodyRps}, MethodCfg, ValidResponse);
-          {Code, Headers} ->
-            ?LOG_DEBUG(#{description => "Response from adapter",
-              domain => DomainKey, operation_id => OperationID, 
-              rsp_code => Code, rsp_headers => Headers, body_response => no_response}),
-            garm_http_response:prepare_response({Code, Headers, no_response}, MethodCfg, ValidResponse)
-        end
+        {error, HttpCode, Reason}
     end
   catch
     _Class:Exception:Stacktrace ->
       ?LOG_ERROR(#{description => "HTTP request process general error", 
-                  op_id => OperationID, msg => Exception, 
+                  operation_id => OperationID, msg => Exception, 
                   stacktrace => Stacktrace}),
       {error, Exception}
   end.
@@ -421,18 +421,18 @@ process(Req, MethodCfg, ParamValues, Adapter, ValidBody, ValidResponse, ContentT
 %% -----------------------------------------------------------------------------
 %% @doc
 %% -----------------------------------------------------------------------------
--spec dispatch_to_adapter(binary(), module(), binary(), map()) -> tuple().
-dispatch_to_adapter(DomainKey, Adapter, OperationID, Populated) ->
-  case garm_adapter:process(Adapter, DomainKey, OperationID, Populated) of
+-spec exec_adapter(binary(), module(), binary(), map()) -> tuple().
+exec_adapter(DomainKey, Adapter, OperationID, Params) ->
+  case garm_adapter:process(Adapter, DomainKey, OperationID, Params) of
     {error, Reason} ->
       ?LOG_DEBUG(#{description => "Adapter errors", 
-        reason => Reason, adapter => Adapter, callback => process, 
-        args => [DomainKey, OperationID, Populated]}),
+        reason => Reason, adapter => Adapter, domain_key => DomainKey, 
+				operation_id => OperationID}),
       garm_http_response:build(?INTERNAL_SERVER_ERROR_HTTP_CODE, #{});
-    {Code, Headers} ->
-      {Code, Headers};
-    {Code, Headers, Body} ->
-      {Code, Headers, Body}
+    {HttpCode, Headers} ->
+      {HttpCode, Headers};
+    {HttpCode, Headers, Body} ->
+      {HttpCode, Headers, Body}
   end.
 
 %% -----------------------------------------------------------------------------
@@ -443,34 +443,31 @@ dispatch_to_adapter(DomainKey, Adapter, OperationID, Populated) ->
 reply_response(Response, Req0, State = #state{operation_id = OperationID}) ->
   case Response of
     {ok, {Code, Headers}} ->
-      Req1 = cowboy_req:reply(Code, Headers, Req0),
-      {stop, Req1, State};
+      Req = cowboy_req:reply(Code, Headers, Req0),
+      {stop, Req, State};
     {ok, {Code, Headers, Body}} ->
-      Req1 = cowboy_req:reply(Code, Headers, Body, Req0),
-      {stop, Req1, State};
-		
+      Req = cowboy_req:reply(Code, Headers, Body, Req0),
+      {stop, Req, State};
 		{error, content_type_not_found} ->
-      ?LOG_ERROR(#{description => "Unable to process response", 
-        op_id => OperationID, reason => content_type_not_found}), %state => State}),
-      Req2 = cowboy_req:reply(?BAD_REQUEST_HTTP_CODE, #{}, Req0),
-      {stop, Req2, State};
+      ?LOG_DEBUG(#{description => "Unknown content type response", 
+        operation_id => OperationID, reason => content_type_not_found}),
+      Req = cowboy_req:reply(?BAD_REQUEST_HTTP_CODE, #{}, Req0),
+      {stop, Req, State};
 		{error, validator_not_found} ->
-      ?LOG_ERROR(#{description => "Unable to process response", 
-        op_id => OperationID, reason => validator_not_found}), %state => State}),
-      Req2 = cowboy_req:reply(?UNSUPPORTED_MEDIA_TYPE_HTTP_CODE, #{}, Req0),
-      {stop, Req2, State};
-
+      ?LOG_DEBUG(#{description => "Response validator not found", 
+        operation_id => OperationID, reason => validator_not_found}),
+      Req = cowboy_req:reply(?UNSUPPORTED_MEDIA_TYPE_HTTP_CODE, #{}, Req0),
+      {stop, Req, State};
     {error, Reason} ->
-      ?LOG_ERROR(#{description => "Unable to process response", 
-        op_id => OperationID, reason => Reason}), %state => State}),
-      Req2 = cowboy_req:reply(?INTERNAL_SERVER_ERROR_HTTP_CODE, #{}, Req0),
-      {stop, Req2, State};
-
+      ?LOG_DEBUG(#{description => "Unknown error", 
+        operation_id => OperationID, reason => Reason}),
+      Req = cowboy_req:reply(?INTERNAL_SERVER_ERROR_HTTP_CODE, #{}, Req0),
+      {stop, Req, State};
     {error, HttpCode, Reason} ->
-      ?LOG_ERROR(#{description => "Unable to process response", 
-        op_id => OperationID, reason => Reason}), %state => State}),
-      Req2 = cowboy_req:reply(HttpCode, #{}, Req0),
-      {stop, Req2, State}
+      ?LOG_DEBUG(#{description => "Error from adapter", 
+        operation_id => OperationID, reason => Reason}),
+      Req = cowboy_req:reply(HttpCode, #{}, Req0),
+      {stop, Req, State}
   end.
 
 -spec content_types(Req :: req(), State :: state(), Step :: content_types_provided | content_types_accepted) ->

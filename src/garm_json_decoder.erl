@@ -53,7 +53,8 @@ validate(ReqBody, _, _Required, _Params) ->
 				{ok, #{}};
 
 			Size when Size > 0 ->
-				case thoas:decode(ReqBody) of
+				Utf8Binary = unicode:characters_to_binary(ReqBody),
+				case thoas:decode(Utf8Binary) of
 					{ok, JsonBody} ->
 						?LOG_DEBUG(#{description => "Validation request body is ok",
 							req_body => ReqBody}),
