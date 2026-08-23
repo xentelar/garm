@@ -42,35 +42,26 @@ init(_ObjectsDef) ->
 -spec validate(binary() | map(), term(), true | false, [binary()]) -> {ok, binary() | map()} | {error, term()}.
 validate(ReqBody, _, _Required, _Params) ->
 	try
-
-		?LOG_DEBUG(#{description => "Validation request body",
-			req_body => ReqBody}),
-
 		case byte_size(ReqBody) of
 			0 ->
-				?LOG_ERROR(#{description => "Validation error, request body is empty",
-					req_body => ReqBody}),
+				?LOG_DEBUG(#{description => "Validation error, request body is empty"}),
 				{ok, #{}};
-
 			Size when Size > 0 ->
 				Utf8Binary = unicode:characters_to_binary(ReqBody),
 				case thoas:decode(Utf8Binary) of
 					{ok, JsonBody} ->
-						?LOG_DEBUG(#{description => "Validation request body is ok",
-							req_body => ReqBody}),
 						{ok, JsonBody};
 					{error, Reason} ->
 						?LOG_ERROR(#{description => "Validation error, request body is not json",
 							req_body => ReqBody, reason => Reason}),
-						{ok, #{}}
+						{error, Reason}
 				end
 		end
-
 	catch
-		Class:Reason0:_Stacktrace ->
+		_Class:Reason0:Stacktrace ->
 			?LOG_ERROR(#{description => "Validation error",
-				error => Class, reason => Reason0}),
-			{ok, #{}}
+				reason => Reason0, stacktrace => Stacktrace}),
+			{error, Reason0}
 	end.
 
 %% -----------------------------------------------------------------------------

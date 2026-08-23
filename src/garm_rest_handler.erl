@@ -353,9 +353,7 @@ options(Req0, #state{origin = Origin, methods = Methods} = State) ->
       M = lists:foldl(fun(M, Acc)-> [M]++[<<", ">>]++Acc end, [], T),
       list_to_binary(M++L)
   end,
-
   Req = cowboy_req:set_resp_headers(?ACCESS_CONTROL_HEADERS(Origin, Methods0), Req0),
-
   %?LOG_DEBUG(#{description => "Options Method was processed", 
   %          headers => cowboy_req:resp_headers(Req)}),
   {ok, Req, State}.

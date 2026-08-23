@@ -52,8 +52,8 @@ is_authorized(AuthControl, Req, SecuritySchema) ->
     
   catch _Class:Reason:Stacktrace ->
     ?LOG_ERROR(#{description => "Auth Adapter errors", 
-          reason => Reason, auth_adapter => AuthControl, callback => is_authorized,
-          stacktrace => Stacktrace}),
+      reason => Reason, auth_adapter => AuthControl, callback => is_authorized,
+      stacktrace => Stacktrace}),
     false
   end.
 
@@ -68,8 +68,8 @@ start(AuthControl, DomainKey, SecScheme, SecurityDef) ->
     
   catch _Class:Reason:Stacktrace ->
     ?LOG_ERROR(#{description => "Auth Adapter errors", 
-          reason => Reason, auth_adapter => AuthControl, callback => start,
-          stacktrace => Stacktrace}),
+      reason => Reason, auth_adapter => AuthControl, callback => start,
+      stacktrace => Stacktrace}),
     {error, Reason}
   end.
 
