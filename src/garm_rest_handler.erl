@@ -142,14 +142,14 @@ uri_too_long(Req, #state{origin = Origin} = State) ->
     _Method ->
       Path = cowboy_req:path(Req),
       case bit_size(Path) of
-        A when A>?URI_LONG ->
-          %?LOG_DEBUG(#{description => "API Path is too long",
-          %            method => Method}),
-          {true, garm_http_response:resp_headers(Req, Origin), State};
-        _ ->
+        A when A<?URI_LONG ->
           %?LOG_DEBUG(#{description => "API Path is ok", 
           %            method => Method}),
-          {false, Req, State}
+          {false, Req, State};
+        _ ->
+          %?LOG_DEBUG(#{description => "API Path is too long",
+          %            method => Method}),
+          {true, garm_http_response:resp_headers(Req, Origin), State}
       end
   end.
 
@@ -361,7 +361,7 @@ options(Req0, #state{origin = Origin, methods = Methods} = State) ->
 %% -----------------------------------------------------------------------------
 %% @doc
 %% -----------------------------------------------------------------------------
--spec process_request(req(), state()) -> processed_response().
+-spec process_request(Req :: req(), State :: state()) -> processed_response().
 process_request(Req, State = #state{operation_id = OperationID,
                                         cfg = MethodCfg,
                                         valid_body = ValidBody,
