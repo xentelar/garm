@@ -294,14 +294,14 @@ valid_entity_length(Req, #state{origin = Origin} = State) ->
           {true, Req, State};
         _RequestBody ->
           case cowboy_req:body_length(Req) of
-            A when A>?ENTITY_LENGTH ->
-              %?LOG_DEBUG(#{description => "Entity is too long", 
-              %            sise => A, method => Method}),
-              {false, garm_http_response:resp_headers(Req, Origin), State};
-            _ ->
+            A when A<?ENTITY_LENGTH ->
               %?LOG_DEBUG(#{description => "Entity is ok", 
               %            method => Method}),
-              {true, Req, State}
+              {true, Req, State};
+            _ ->
+              %?LOG_DEBUG(#{description => "Entity is too long", 
+              %            sise => A, method => Method}),
+              {false, garm_http_response:resp_headers(Req, Origin), State}
           end
       end
   end.
